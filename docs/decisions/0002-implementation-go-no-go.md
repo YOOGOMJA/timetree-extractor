@@ -61,7 +61,7 @@
 
 허용:
 
-- TypeScript project scaffold 검토 또는 생성
+- dependency-free ESM scaffold 생성, TypeScript migration은 별도 검토
 - schema validator
 - redacted/synthetic fixtures
 - unit tests
@@ -109,12 +109,12 @@
 
 ## Next implementation recommendation
 
-다음 작업은 **TypeScript 기반 contract validator + normalizer fixture tests**다.
+다음 작업은 **dependency-free contract validator + normalizer fixture tests**다. TypeScript는 dependency 추가 decision 이후 migration한다.
 
 권장 순서:
 
 1. package scaffold와 test runner 선택
-2. `RawTimeTreeEvent` / `NormalizedCalendarEvent` type 작성
+2. `RawTimeTreeEvent` / `NormalizedCalendarEvent` contract 작성
 3. schema validator 작성
 4. fixture 작성
 5. normalizer 작성

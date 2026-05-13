@@ -42,7 +42,8 @@ type NormalizationWarning =
   | 'attachment-omitted'
   | 'comment-omitted'
   | 'participant-omitted'
-  | 'label-color-approximation';
+  | 'label-color-approximation'
+  | 'title-empty';
 ```
 
 ## Mapping rules
@@ -51,7 +52,7 @@ type NormalizationWarning =
 | --- | --- | --- |
 | `id` | `uid`, `source.eventId` | `uid`는 deterministic하게 생성 |
 | `calendarId` | `source.calendarId` | 그대로 보존 |
-| `title` | `title` | empty title이면 placeholder와 warning |
+| `title` | `title` | empty title이면 placeholder와 `title-empty` warning |
 | `note` | `description` | plain text 보존, HTML 변환 금지 |
 | `location` | `location` | string 그대로 보존 |
 | `url` | `url` | URL string 검증 후 보존 |
