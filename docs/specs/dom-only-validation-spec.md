@@ -96,6 +96,10 @@ Fail:
 - 필수 data가 network response 또는 private endpoint 없이는 확인되지 않는다.
 - shared calendar 개인정보 risk를 통제할 수 없는 surface만 확인된다.
 
+## Validation result
+
+2026-05-13 DOM only validation result: **fail**. `docs/research/timetree-web-data-surface.md`에 기록된 조사 결과, `timezone`이 DOM에 명시적으로 노출되지 않았고 `all-day 여부`도 explicit field가 아니라 DOM structure와 time text 유무에 의존한다. 따라서 같은 milestone 안에서 network observation으로 확장하지 않고, 다음 decision을 별도로 내려야 한다.
+
 ## 다음 단계
 
 Pass일 때:
