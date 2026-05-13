@@ -7,6 +7,14 @@
 - Respond objectively rather than optimistically. State what is known, what is inferred, and what is still unverified.
 - Use a top-down structure: conclusion first, then reasons, evidence, risks, and next actions.
 
+## Commit convention
+- Use Conventional Commits / commitlint style by default.
+- Commit header format: `<type>(optional-scope): <subject>`.
+- Common types: `feat`, `fix`, `docs`, `refactor`, `test`, `chore`, `build`, `ci`.
+- Write the subject in Korean unless an external convention or package configuration requires otherwise.
+- Keep the header concise and objective.
+- For substantive commits, keep the Conventional Commit header and add Lore-style decision trailers in the commit body when useful.
+
 ## Project context
 - This repository is for a TimeTree backup/exporter concept: a local-first tool that helps export user-accessible TimeTree calendar data to JSON backup and ICS migration files.
 - Treat Notion documents for `TimeTree Backup Exporter`, `TimeTree Web 데이터 표면 조사`, and `v1은 개인용 로컬 백업 도구로 제한한다` as product context, not as implementation proof.
