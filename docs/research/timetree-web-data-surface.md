@@ -2,6 +2,10 @@
 
 결론: 구현 전에 TimeTree Web에서 필수 field를 실제로 얻을 수 있는지 조사해야 한다. 이 조사가 실패하면 browser extension MVP 범위는 재검토해야 한다.
 
+## Prerequisite research
+
+이 조사는 `docs/research/timetree-policy-and-web-research.md`를 전제로 한다. 2026-05-13 기준 공식 TimeTree calendar export와 공개 developer API는 확인되지 않았으므로, 첫 pass는 official API integration이 아니라 사용자가 로그인한 Web 화면의 DOM data surface 확인이다.
+
 ## 검증할 가정
 
 TimeTree Web에서 사용자가 접근 가능한 일정 목록과 상세 정보를 local browser extension이 `JSON` backup과 `ICS` export에 충분한 수준으로 수집할 수 있다.
@@ -45,6 +49,16 @@ TimeTree Web에서 사용자가 접근 가능한 일정 목록과 상세 정보�
 5. DOM만으로 가능한 field와 network response 확인이 필요한 field를 분리한다.
 6. 1개월, 6개월, 1년 단위로 수집 가능성을 추정한다.
 7. 정책 risk가 커지는 접근 방식은 별도로 표시한다.
+
+## Policy and privacy constraints
+
+- Evidence source는 DOM only다.
+- Network response observation은 첫 pass에서 제외한다.
+- Private endpoint reverse engineering은 하지 않는다.
+- Credential 또는 session token을 저장하지 않는다.
+- Server-side collection이나 storage를 만들지 않는다.
+- Shared calendar data에는 다른 참가자의 personal information이 포함될 수 있으므로, 관찰 결과에 해당 가능성을 기록한다.
+- 이 조사는 법률 자문이 아니라 product/policy risk 검토를 반영한 technical validation이다.
 
 ## 성공 기준
 
