@@ -1,14 +1,16 @@
-export const calendarFixture = {
+import type { RawTimeTreeCalendar, RawTimeTreeEvent, RawTimeTreeLabel } from '../src/core/contracts.js';
+
+export const calendarFixture: RawTimeTreeCalendar = {
   id: 1,
   aliasCode: 'calendar-alias',
   name: 'Synthetic Calendar',
 };
 
-export const labelsFixture = [
+export const labelsFixture: RawTimeTreeLabel[] = [
   { id: 10, calendarId: 1, name: 'Family', color: 3, defaultColor: 3, order: 1 },
 ];
 
-export const timedEventFixture = {
+export const timedEventFixture: RawTimeTreeEvent = {
   id: 'event-timed-1',
   calendarId: 1,
   title: 'Synthetic timed event',
@@ -32,7 +34,7 @@ export const timedEventFixture = {
   extractionWarnings: [],
 };
 
-export const allDayEventFixture = {
+export const allDayEventFixture: RawTimeTreeEvent = {
   ...timedEventFixture,
   id: 'event-all-day-1',
   title: 'Synthetic all-day event',
@@ -44,7 +46,7 @@ export const allDayEventFixture = {
   recurrences: [],
 };
 
-export const weeklyRecurringEventFixture = {
+export const weeklyRecurringEventFixture: RawTimeTreeEvent = {
   ...timedEventFixture,
   id: 'event-recurring-weekly-1',
   title: 'Synthetic weekly recurring event',
@@ -52,14 +54,14 @@ export const weeklyRecurringEventFixture = {
   recurringUuid: 'recurring-synthetic-1',
 };
 
-export const unsupportedRecurringEventFixture = {
+export const unsupportedRecurringEventFixture: RawTimeTreeEvent = {
   ...timedEventFixture,
   id: 'event-recurring-unsupported-1',
   title: 'Synthetic unsupported recurrence event',
   recurrences: ['RRULE:FREQ=YEARLY;BYMONTH=5;BYMONTHDAY=5'],
 };
 
-export const missingTimezoneTimedEventFixture = {
+export const missingTimezoneTimedEventFixture: RawTimeTreeEvent = {
   ...timedEventFixture,
   id: 'event-missing-timezone-1',
   startTimezone: null,

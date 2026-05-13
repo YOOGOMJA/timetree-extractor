@@ -5,8 +5,8 @@ import {
   missingTimezoneTimedEventFixture,
   timedEventFixture,
   weeklyRecurringEventFixture,
-} from './fixtures.js';
-import { validateRawTimeTreeEvent, validateRawTimeTreeLabel } from '../src/contracts.js';
+} from '../fixtures.js';
+import { validateRawTimeTreeEvent, validateRawTimeTreeLabel } from '../../src/core/contracts.js';
 
 test('accepts a valid timed raw TimeTree event contract', () => {
   const result = validateRawTimeTreeEvent(timedEventFixture);

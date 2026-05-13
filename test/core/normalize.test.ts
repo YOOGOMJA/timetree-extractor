@@ -8,8 +8,8 @@ import {
   timedEventFixture,
   unsupportedRecurringEventFixture,
   weeklyRecurringEventFixture,
-} from './fixtures.js';
-import { normalizeRawTimeTreeEvent } from '../src/normalize.js';
+} from '../fixtures.js';
+import { normalizeRawTimeTreeEvent } from '../../src/core/normalize.js';
 
 test('normalizes a timed event while preserving timezone and source identifiers', () => {
   const result = normalizeRawTimeTreeEvent(timedEventFixture, {
@@ -78,7 +78,6 @@ test('marks unsupported recurrence without silently dropping the source rule', (
   });
   assert.equal(result.value.warnings.includes('recurrence-unsupported'), true);
 });
-
 
 test('normalizes an empty title to a placeholder with an explicit warning', () => {
   const result = normalizeRawTimeTreeEvent({ ...timedEventFixture, title: '' }, {

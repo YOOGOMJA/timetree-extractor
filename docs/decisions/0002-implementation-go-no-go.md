@@ -1,6 +1,6 @@
 # Decision 0002: 제한된 contract-first 구현은 진행한다
 
-결론: **구현은 진행한다. 단, 범위는 local-only contract validator와 parser/normalizer prototype으로 제한한다.** Browser extension UI, public distribution, SaaS, background sync, credential/session 저장, attachment export는 no-go다.
+결론: **구현은 진행한다. 단, 범위는 local-only contract validator, parser/normalizer prototype, 그리고 Chrome extension을 고려한 page extraction boundary로 제한한다.** Browser extension UI, public distribution, SaaS, background sync, credential/session 저장, attachment export는 no-go다.
 
 ## Decision status
 
@@ -13,6 +13,7 @@
 | Internal API 기반 full exporter | no-go for now |
 | Local-only contract validator | go |
 | Parser/normalizer prototype | conditional go |
+| Page extraction boundary | conditional go |
 | ICS writer | later, after fixture gate |
 
 ## Decision drivers
@@ -36,8 +37,9 @@
 1. local-only boundary를 먼저 고정한다.
 2. redacted/synthetic fixture 기반 `RawTimeTreeEvent` schema validator를 만든다.
 3. `RawTimeTreeEvent -> NormalizedCalendarEvent` normalizer를 만든다.
-4. P0 fixture가 통과하면 제한된 read-only extractor spike를 검토한다.
-5. ICS writer는 normalizer fixture와 timezone/recurrence rule이 안정화된 뒤 시작한다.
+4. Chrome extension을 고려해 core/browser/extension adapter boundary를 분리한다.
+5. P0 fixture가 통과하면 제한된 read-only extractor smoke test를 검토한다.
+6. ICS writer는 normalizer fixture와 timezone/recurrence rule이 안정화된 뒤 시작한다.
 
 ## Alternatives considered
 
@@ -61,11 +63,12 @@
 
 허용:
 
-- dependency-free ESM scaffold 생성, TypeScript migration은 별도 검토
+- TypeScript ESM scaffold 생성
 - schema validator
 - redacted/synthetic fixtures
 - unit tests
 - normalizer tests
+- browser/page extraction boundary tests
 - warning/fail policy
 - documentation update
 
@@ -76,6 +79,7 @@
 - background crawling
 - mutation API call
 - browser extension UI
+- browser extension manifest/permission 설계
 - public distribution 준비
 - Google Calendar OAuth
 - attachment binary download
@@ -105,21 +109,19 @@
 - 장점: 작고 검증 가능한 구현부터 시작하므로 잘못된 calendar export를 피할 수 있다.
 - 단점: 사용자가 바로 쓸 수 있는 exporter는 아직 나오지 않는다.
 - 제약: TimeTree 내부 surface가 바뀌면 extractor 단계는 깨질 수 있다.
-- 후속: scaffold와 test runner 선택이 필요하다.
+- 후속: 실제 로그인된 page smoke test와 `ICS` writer gate가 필요하다.
 
 ## Next implementation recommendation
 
-다음 작업은 **dependency-free contract validator + normalizer fixture tests**다. TypeScript는 dependency 추가 decision 이후 migration한다.
+다음 작업은 **저장 없는 read-only page extractor smoke test 또는 `ICS` writer contract 설계**다. 현재 TypeScript 기반 contract validator, normalizer, browser boundary는 TDD로 구현되어 있다.
 
 권장 순서:
 
-1. package scaffold와 test runner 선택
-2. `RawTimeTreeEvent` / `NormalizedCalendarEvent` contract 작성
-3. schema validator 작성
-4. fixture 작성
-5. normalizer 작성
-6. warning/fail policy test 작성
+1. 실제 로그인된 TimeTree page에서 endpoint path와 payload shape를 저장 없이 확인
+2. smoke test 결과가 현재 `src/browser/` mapping과 맞는지 검증
+3. timezone/all-day/recurrence field가 안정적이면 fixture를 추가
+4. 그 다음 `ICS` writer contract를 TDD로 작성
 
 ## 결론
 
-구현 여부 판단은 **조건부 go**다. 지금 구현할 것은 exporter product가 아니라, local-only contract validator와 parser/normalizer prototype이다.
+구현 여부 판단은 **조건부 go**다. 지금 구현할 것은 exporter product가 아니라, local-only contract validator, parser/normalizer prototype, page extraction boundary다.

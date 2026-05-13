@@ -1,4 +1,4 @@
-const EXTRACTION_WARNING_VALUES = new Set([
+export const EXTRACTION_WARNING_VALUES = [
   'internal-api-surface',
   'missing-timezone',
   'missing-end-timezone',
@@ -7,10 +7,60 @@ const EXTRACTION_WARNING_VALUES = new Set([
   'unsupported-comment',
   'shared-calendar-personal-data',
   'recurrence-not-normalized',
-]);
+] as const;
 
-export function validateRawTimeTreeCalendar(input) {
-  const issues = [];
+const extractionWarningSet = new Set<string>(EXTRACTION_WARNING_VALUES);
+
+export type ExtractionWarning = (typeof EXTRACTION_WARNING_VALUES)[number];
+
+export type RawTimeTreeCalendar = {
+  id: number;
+  aliasCode: string;
+  name: string;
+  updatedAt?: number;
+  createdAt?: number;
+};
+
+export type RawTimeTreeLabel = {
+  id: number;
+  calendarId: number;
+  name: string;
+  color?: number;
+  defaultColor?: number;
+  order?: number;
+};
+
+export type RawTimeTreeEvent = {
+  id: string;
+  calendarId: number;
+  title: string;
+  allDay: boolean;
+  startAt: number;
+  startTimezone: string | null;
+  endAt: number;
+  endTimezone: string | null;
+  labelId?: number | null;
+  location?: string | null;
+  url?: string | null;
+  note?: string | null;
+  recurrences: string[];
+  recurringUuid?: string | null;
+  alerts?: unknown[];
+  attendees?: unknown[];
+  attachment?: unknown;
+  files?: unknown[];
+  updatedAt?: number;
+  createdAt?: number;
+  deactivatedAt?: number | null;
+  extractionWarnings: ExtractionWarning[];
+};
+
+export type ValidationResult<T> =
+  | { ok: true; value: T; issues: [] }
+  | { ok: false; value: undefined; issues: string[] };
+
+export function validateRawTimeTreeCalendar(input: unknown): ValidationResult<RawTimeTreeCalendar> {
+  const issues: string[] = [];
   const value = isRecord(input) ? { ...input } : {};
 
   requireNumber(value, 'id', issues);
@@ -19,11 +69,11 @@ export function validateRawTimeTreeCalendar(input) {
   optionalNumber(value, 'updatedAt', issues);
   optionalNumber(value, 'createdAt', issues);
 
-  return result(value, issues);
+  return result(value as RawTimeTreeCalendar, issues);
 }
 
-export function validateRawTimeTreeLabel(input) {
-  const issues = [];
+export function validateRawTimeTreeLabel(input: unknown): ValidationResult<RawTimeTreeLabel> {
+  const issues: string[] = [];
   const value = isRecord(input) ? { ...input } : {};
 
   requireNumber(value, 'id', issues);
@@ -33,11 +83,11 @@ export function validateRawTimeTreeLabel(input) {
   optionalNumber(value, 'defaultColor', issues);
   optionalNumber(value, 'order', issues);
 
-  return result(value, issues);
+  return result(value as RawTimeTreeLabel, issues);
 }
 
-export function validateRawTimeTreeEvent(input) {
-  const issues = [];
+export function validateRawTimeTreeEvent(input: unknown): ValidationResult<RawTimeTreeEvent> {
+  const issues: string[] = [];
   const value = isRecord(input) ? { ...input } : {};
 
   requireString(value, 'id', issues);
@@ -65,16 +115,14 @@ export function validateRawTimeTreeEvent(input) {
     });
   }
 
-  if (value.extractionWarnings === undefined) {
-    value.extractionWarnings = [];
-  }
+  value.extractionWarnings ??= [];
   if (!Array.isArray(value.extractionWarnings)) {
     issues.push('extractionWarnings must be an array');
   } else {
     value.extractionWarnings.forEach((warning, index) => {
       if (typeof warning !== 'string') {
         issues.push(`extractionWarnings[${index}] must be a string`);
-      } else if (!EXTRACTION_WARNING_VALUES.has(warning)) {
+      } else if (!extractionWarningSet.has(warning)) {
         issues.push(`extractionWarnings[${index}] has unsupported value: ${warning}`);
       }
     });
@@ -92,22 +140,20 @@ export function validateRawTimeTreeEvent(input) {
     issues.push('endAt must be greater than or equal to startAt');
   }
 
-  return result(value, issues);
+  return result(value as RawTimeTreeEvent, issues);
 }
 
-export { EXTRACTION_WARNING_VALUES };
-
-function result(value, issues) {
+function result<T>(value: T, issues: string[]): ValidationResult<T> {
   return issues.length === 0
     ? { ok: true, value, issues: [] }
     : { ok: false, value: undefined, issues };
 }
 
-function isRecord(input) {
+function isRecord(input: unknown): input is Record<string, unknown> {
   return input !== null && typeof input === 'object' && !Array.isArray(input);
 }
 
-function requireString(value, field, issues, options = {}) {
+function requireString(value: Record<string, unknown>, field: string, issues: string[], options: { allowEmpty?: boolean } = {}): void {
   if (typeof value[field] !== 'string') {
     issues.push(`${field} must be a string`);
     return;
@@ -117,7 +163,7 @@ function requireString(value, field, issues, options = {}) {
   }
 }
 
-function optionalString(value, field, issues, options = {}) {
+function optionalString(value: Record<string, unknown>, field: string, issues: string[], options: { allowNull?: boolean } = {}): void {
   if (value[field] === undefined) return;
   if (value[field] === null && options.allowNull) return;
   if (typeof value[field] !== 'string') {
@@ -125,13 +171,13 @@ function optionalString(value, field, issues, options = {}) {
   }
 }
 
-function requireNumber(value, field, issues) {
+function requireNumber(value: Record<string, unknown>, field: string, issues: string[]): void {
   if (typeof value[field] !== 'number' || !Number.isFinite(value[field])) {
     issues.push(`${field} must be a finite number`);
   }
 }
 
-function optionalNumber(value, field, issues, options = {}) {
+function optionalNumber(value: Record<string, unknown>, field: string, issues: string[], options: { allowNull?: boolean } = {}): void {
   if (value[field] === undefined) return;
   if (value[field] === null && options.allowNull) return;
   if (typeof value[field] !== 'number' || !Number.isFinite(value[field])) {
@@ -139,7 +185,7 @@ function optionalNumber(value, field, issues, options = {}) {
   }
 }
 
-function requireBoolean(value, field, issues) {
+function requireBoolean(value: Record<string, unknown>, field: string, issues: string[]): void {
   if (typeof value[field] !== 'boolean') {
     issues.push(`${field} must be a boolean`);
   }

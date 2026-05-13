@@ -13,10 +13,11 @@
 | 5 | `specs/privacy-and-local-only-boundary.md` | 구현 가능한 local-only/privacy boundary |
 | 6 | `specs/timetree-extraction-contract.md` | TimeTree raw extraction contract와 fixture gate |
 | 7 | `specs/ics-normalization-contract.md` | `ICS` 전 단계 normalization contract |
-| 8 | `specs/dom-only-validation-spec.md` | 첫 milestone의 실행 spec과 pass/fail 기준 |
-| 9 | `decisions/0001-local-first-v1.md` | Google Calendar 연동이 아니라 local export로 시작하는 이유 |
-| 10 | `decisions/0002-implementation-go-no-go.md` | 구현 여부와 허용 범위 결정 |
-| 11 | `architecture-notes.md` | 검증 후 가능한 browser extension 구조 |
+| 8 | `specs/chrome-extension-boundary.md` | Chrome extension을 고려한 code boundary와 금지선 |
+| 9 | `specs/dom-only-validation-spec.md` | 첫 milestone의 실행 spec과 pass/fail 기준 |
+| 10 | `decisions/0001-local-first-v1.md` | Google Calendar 연동이 아니라 local export로 시작하는 이유 |
+| 11 | `decisions/0002-implementation-go-no-go.md` | 구현 여부와 허용 범위 결정 |
+| 12 | `architecture-notes.md` | 검증 후 가능한 browser extension 구조 |
 
 ## 문서 작성 규칙
 
