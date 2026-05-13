@@ -7,9 +7,10 @@
 | 순서 | 문서 | 목적 |
 | --- | --- | --- |
 | 1 | `product-context.md` | 왜 이 도구가 필요한지와 v1 범위 이해 |
-| 2 | `research/timetree-web-data-surface.md` | 구현 전에 반드시 확인할 data surface 조사 |
-| 3 | `decisions/0001-local-first-v1.md` | Google Calendar 연동이 아니라 local export로 시작하는 이유 |
-| 4 | `architecture-notes.md` | 검증 후 가능한 browser extension 구조 |
+| 2 | `research/timetree-policy-and-web-research.md` | TimeTree 정책, Web version, export/API 제약 조사 |
+| 3 | `research/timetree-web-data-surface.md` | 구현 전에 반드시 확인할 data surface 조사 |
+| 4 | `decisions/0001-local-first-v1.md` | Google Calendar 연동이 아니라 local export로 시작하는 이유 |
+| 5 | `architecture-notes.md` | 검증 후 가능한 browser extension 구조 |
 
 ## 문서 작성 규칙
 
