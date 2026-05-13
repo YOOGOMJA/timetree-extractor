@@ -8,12 +8,15 @@
 - Use a top-down structure: conclusion first, then reasons, evidence, risks, and next actions.
 
 ## Commit convention
-- Use Conventional Commits / commitlint style by default.
-- Commit header format: `<type>(optional-scope): <subject>`.
-- Common types: `feat`, `fix`, `docs`, `refactor`, `test`, `chore`, `build`, `ci`.
+- Use the repo-local `commit-message` skill before creating, reviewing, or rewriting commit messages.
+- Use Conventional Commits / commitlint style by default: `<type>[optional scope][!]: <subject>`.
+- Common types: `feat`, `fix`, `docs`, `refactor`, `test`, `chore`, `build`, `ci`, `perf`, `style`, `revert`.
 - Write the subject in Korean unless an external convention or package configuration requires otherwise.
-- Keep the header concise and objective.
-- For substantive commits, keep the Conventional Commit header and add Lore-style decision trailers in the commit body when useful.
+- Keep the subject concise, objective, action-oriented, and without a trailing period.
+- Prefer one logical change per commit; split commits when more than one type would be equally valid.
+- Add a blank line before any body. Use the body to explain the problem, why this change is appropriate, and rejected alternatives or tradeoffs.
+- For substantive commits, keep the Conventional Commit header and add Lore-style decision trailers in the body when useful.
+- Mark breaking changes with `!` in the header or `BREAKING CHANGE:` in the footer.
 
 ## Project context
 - This repository is for a TimeTree backup/exporter concept: a local-first tool that helps export user-accessible TimeTree calendar data to JSON backup and ICS migration files.
