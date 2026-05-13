@@ -100,6 +100,10 @@ Fail:
 
 2026-05-13 DOM only validation result: **fail**. `docs/research/timetree-web-data-surface.md`에 기록된 조사 결과, `timezone`이 DOM에 명시적으로 노출되지 않았고 `all-day 여부`도 explicit field가 아니라 DOM structure와 time text 유무에 의존한다. 따라서 같은 milestone 안에서 network observation으로 확장하지 않고, 다음 decision을 별도로 내려야 한다.
 
+## Follow-up research
+
+- `docs/research/timetree-network-page-state-research.md`: DOM only fail 이후 제한된 network/page-state research 결과를 기록한다. 기술적으로는 P0 field가 app data model에 존재할 가능성이 높지만, 공식 공개 API가 아니므로 구현 전 local-only/privacy boundary decision이 필요하다.
+
 ## 다음 단계
 
 Pass일 때:
