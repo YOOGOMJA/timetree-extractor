@@ -12,7 +12,7 @@
 
 - TimeTree는 shared calendar 중심의 calendar sharing service다.
 - 공식 Connect App / API 기능은 2023-12-22 종료되었다.
-- 일반 사용자 calendar를 `JSON` 또는 `ICS`로 export하는 공식 기능은 확인되지 않는다.
+- 공식 Help FAQ 기준 event export는 제공되지 않고, external calendar event를 TimeTree로 import하는 방향만 확인된다.
 - TimeTree 약관은 사용자가 자신의 data를 자기 책임으로 backup해야 한다고 설명한다.
 - Shared Calendar Guidelines는 shared calendar information이 API 또는 backup을 통해 외부 service에서 사용될 수 있음을 전제로 하지만, 이것이 DOM scraping, private endpoint 호출, 자동화 export를 명시적으로 허가한다는 의미는 아니다.
 - Web version은 calendar 조회, 생성, 검색, memo, album, member list, activity, setting 등을 제공하지만, Google Calendar 같은 external calendar 표시는 Web에 없다.
@@ -61,10 +61,11 @@ Source:
 
 ### Export / import / sync
 
-공식 Help 기준 일반 TimeTree events는 export할 수 없다. External calendar 사용은 모바일 앱에서 external calendar를 표시하거나 TimeTree shared calendar로 가져오는 방향이 중심이다. TimeTree events가 external calendar로 자동 반영되는 흐름은 공식적으로 확인되지 않는다.
+공식 Help 기준 일반 TimeTree events는 export할 수 없다. FAQ는 external calendar events를 TimeTree로 import하는 것만 가능하다고 설명한다. External calendar 사용은 모바일 앱에서 external calendar를 표시하거나 TimeTree shared calendar로 가져오는 방향이 중심이다. TimeTree events가 external calendar로 자동 반영되는 흐름은 공식적으로 확인되지 않는다.
 
 Sources:
 
+- FAQ: https://support.timetreeapp.com/hc/en-us/articles/25232518245273-Frequently-Asked-Questions
 - External calendars in TimeTree: https://support.timetreeapp.com/hc/en-us/articles/360000629341-I-want-to-use-another-calendar-such-as-Google-Calendar
 - Share other calendars: https://support.timetreeapp.com/hc/en-us/articles/360000639742-I-want-to-share-other-calendars-in-TimeTree
 - Multiple calendars: https://support.timetreeapp.com/hc/en-us/articles/115000030881-View-multiple-calendars-at-the-same-time
@@ -94,7 +95,7 @@ Source:
 
 ### Privacy Policy / shared calendar data
 
-Privacy Policy는 user information, calendar data, external service linked calendar information 등을 처리 대상으로 설명한다. 한국 이용자 기준 개인정보가 일본 소재 TimeTree server로 전송·처리된다는 설명도 확인된다.
+Privacy Policy는 user information, calendar data, external service linked calendar information 등을 처리 대상으로 설명한다. 2026-04-16 revision 기준 calendar에 등록되는 title, date/time, participants, notes, labels, media files 등이 user information에 포함된다. 한국 이용자 기준 개인정보가 일본 소재 TimeTree server로 전송·처리된다는 설명도 확인된다.
 
 Shared Calendar Guidelines 기준 shared calendar에서는 event title, date and time, location, participants, notes, comments, images, related data, calendar profile information 등이 다른 참가자에게 접근 가능하다. 또한 shared calendar information을 service features 밖에서 access/export/further process하는 참가자는 GDPR상 independent controller로 행동한다고 설명한다.
 
