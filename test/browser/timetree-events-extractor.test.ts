@@ -89,3 +89,11 @@ test('honors since as starting cursor', async () => {
   });
   assert.equal(calls[0], '/api/v1/calendar/1/events?since=42');
 });
+
+test('module is re-exported from src/browser barrel', async () => {
+  const mod = await import('../../src/browser/index.js');
+  assert.equal(typeof mod.extractCalendarEvents, 'function');
+  assert.equal(typeof mod.fetchCalendarEventsPage, 'function');
+  assert.equal(typeof mod.listTimeTreeCalendars, 'function');
+  assert.equal(typeof mod.mapApiCalendarToRawCalendar, 'function');
+});
