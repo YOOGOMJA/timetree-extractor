@@ -58,6 +58,6 @@ function numberValue(value: unknown): number {
 }
 
 function optionalNumber(value: unknown): number | undefined {
-  if (value === undefined) return undefined;
+  if (value === undefined || value === null) return undefined;
   return numberValue(value);
 }

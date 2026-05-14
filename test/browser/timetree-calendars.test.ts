@@ -42,6 +42,18 @@ test('reports invalid calendar payload shape', async () => {
   assert.match(result.issues.join('\n'), /calendars must be an array/);
 });
 
+test('treats null timestamps the same as missing (does not produce NaN)', () => {
+  const raw = mapApiCalendarToRawCalendar({
+    id: 99,
+    alias_code: 'abc',
+    name: 'Family',
+    updated_at: null,
+    created_at: null,
+  });
+  assert.equal(raw.updatedAt, undefined);
+  assert.equal(raw.createdAt, undefined);
+});
+
 test('reports per-calendar validation failures with index prefix', async () => {
   const result = await listTimeTreeCalendars({
     fetchJson: async () => ({ calendars: [{ id: 'not-a-number', alias_code: 'a', name: 'x' }] }),
