@@ -48,6 +48,37 @@ test('preserves normalized recurrence lines without duplicating property names',
   assert.doesNotMatch(ics, /RRULE:RRULE:/);
 });
 
+test('preserves URL property without TEXT escaping', () => {
+  const event = normalized({
+    ...timedEventFixture,
+    url: 'https://example.test/path;key=a,b',
+  });
+
+  const ics = createIcsCalendar([event], {
+    now: new Date(Date.UTC(2026, 0, 1, 0, 0, 0)),
+  });
+
+  assert.match(ics, /URL:https:\/\/example.test\/path;key=a,b\r\n/);
+});
+
+test('folds long unicode lines at UTF-8 octet boundaries without breaking code points', () => {
+  const event = normalized({
+    ...timedEventFixture,
+    note: '한글'.repeat(40),
+  });
+
+  const ics = createIcsCalendar([event], {
+    now: new Date(Date.UTC(2026, 0, 1, 0, 0, 0)),
+  });
+
+  for (const line of ics.split('\r\n')) {
+    assert.ok(new TextEncoder().encode(line).byteLength <= 75, `line exceeds 75 octets without folding: ${line}`);
+  }
+
+  const unfolded = ics.replaceAll('\r\n ', '');
+  assert.ok(unfolded.includes('한글'.repeat(40)), 'multi-byte content survives folding after unfold');
+});
+
 test('escapes ICS text values', () => {
   const event = normalized({
     ...timedEventFixture,

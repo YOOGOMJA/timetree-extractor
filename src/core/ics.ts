@@ -37,7 +37,7 @@ function createIcsEventLines(event: NormalizedCalendarEvent, timestamp: string):
 
   if (event.description) lines.push(`DESCRIPTION:${escapeText(event.description)}`);
   if (event.location) lines.push(`LOCATION:${escapeText(event.location)}`);
-  if (event.url) lines.push(`URL:${escapeText(event.url)}`);
+  if (event.url) lines.push(`URL:${event.url}`);
   if (event.labels && event.labels.length > 0) lines.push(`CATEGORIES:${event.labels.map(escapeText).join(',')}`);
   if (event.recurrence) lines.push(...formatRecurrenceLines(event.recurrence));
 
@@ -92,15 +92,27 @@ function escapeText(value: string): string {
 }
 
 function foldLine(line: string): string {
-  if (line.length <= 75) return line;
+  const bytes = textEncoder.encode(line);
+  if (bytes.byteLength <= 75) return line;
+
   const chunks: string[] = [];
-  let remaining = line;
-  while (remaining.length > 75) {
-    chunks.push(remaining.slice(0, 75));
-    remaining = remaining.slice(75);
+  let cursor = 0;
+  while (cursor < bytes.byteLength) {
+    const isFirst = chunks.length === 0;
+    const budget = isFirst ? 75 : 74;
+    let end = Math.min(cursor + budget, bytes.byteLength);
+    while (end > cursor && isUtf8ContinuationByte(bytes[end])) end -= 1;
+    chunks.push(textDecoder.decode(bytes.subarray(cursor, end)));
+    cursor = end;
   }
-  chunks.push(remaining);
   return chunks.join('\r\n ');
+}
+
+const textEncoder = new TextEncoder();
+const textDecoder = new TextDecoder('utf-8', { fatal: false });
+
+function isUtf8ContinuationByte(byte: number | undefined): boolean {
+  return byte !== undefined && (byte & 0b1100_0000) === 0b1000_0000;
 }
 
 function pad(value: number): string {

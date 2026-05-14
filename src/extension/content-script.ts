@@ -45,11 +45,13 @@ export function createTimeTreeObserverMessageHandler(options: TimeTreeObserverMe
   };
 }
 
+const CREDENTIAL_LIKE_KEYS = new Set(['headers', 'cookie', 'authorization', 'csrf', 'token', 'access_token']);
+
 function containsCredentialLikeKey(value: unknown): boolean {
+  if (Array.isArray(value)) return value.some(containsCredentialLikeKey);
   if (!isRecord(value)) return false;
   for (const [key, nested] of Object.entries(value)) {
-    const normalizedKey = key.toLowerCase();
-    if (['headers', 'cookie', 'authorization', 'csrf', 'token', 'access_token'].includes(normalizedKey)) return true;
+    if (CREDENTIAL_LIKE_KEYS.has(key.toLowerCase())) return true;
     if (containsCredentialLikeKey(nested)) return true;
   }
   return false;

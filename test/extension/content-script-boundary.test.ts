@@ -40,6 +40,26 @@ test('does not pass headers or credentials across boundary', () => {
   assert.match(issues.join('\n'), /credential-like/);
 });
 
+test('blocks credential-like keys nested inside arrays', () => {
+  const issues: string[] = [];
+  const accepted: unknown[] = [];
+  const handler = createTimeTreeObserverMessageHandler({
+    onObserved: (payload) => accepted.push(payload),
+    onIssue: (issue) => issues.push(issue),
+  });
+
+  handler({
+    origin: 'https://timetreeapp.com',
+    data: {
+      type: 'TIMETREE_EXPORTER_OBSERVED_PAYLOAD',
+      payload: { events: [{ id: 'a', headers: { cookie: 'session' } }] },
+    },
+  });
+
+  assert.equal(accepted.length, 0);
+  assert.match(issues.join('\n'), /credential-like/);
+});
+
 test('passes sanitized observed payload to registered handler', () => {
   const accepted: unknown[] = [];
   const handler = createTimeTreeObserverMessageHandler({ onObserved: (payload) => accepted.push(payload) });

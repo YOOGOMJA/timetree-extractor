@@ -59,9 +59,11 @@ export function normalizeRawTimeTreeEvent(rawEvent: unknown, context: Normalizat
   }
 
   const event = validation.value;
-  const warnings = collectWarnings(event);
+  const collected = collectWarnings(event);
   const labels = normalizeLabels(event, context.labels ?? []);
-  const recurrence = normalizeRecurrences(event.recurrences, warnings);
+  const recurrenceResult = normalizeRecurrences(event.recurrences);
+  const warnings = unique([...collected, ...recurrenceResult.warnings]);
+  const recurrence = recurrenceResult.recurrence;
 
   const value: NormalizedCalendarEvent = {
     uid: `timetree:${event.calendarId}:${event.id}`,
@@ -125,10 +127,14 @@ function normalizeLabels(event: RawTimeTreeEvent, labels: RawTimeTreeLabel[]): s
   return label?.name ? [label.name] : [];
 }
 
-function normalizeRecurrences(recurrences: string[], warnings: NormalizationWarning[]): NormalizedRecurrence | undefined {
-  if (recurrences.length === 0) return undefined;
+function normalizeRecurrences(recurrences: string[]): {
+  recurrence: NormalizedRecurrence | undefined;
+  warnings: NormalizationWarning[];
+} {
+  if (recurrences.length === 0) return { recurrence: undefined, warnings: [] };
 
   const recurrence: NormalizedRecurrence = {};
+  const warnings: NormalizationWarning[] = [];
   for (const rule of recurrences) {
     if (rule.startsWith('RRULE:')) {
       push(recurrence, 'rrule', rule);
@@ -146,8 +152,7 @@ function normalizeRecurrences(recurrences: string[], warnings: NormalizationWarn
     }
   }
 
-  warnings.splice(0, warnings.length, ...unique(warnings));
-  return recurrence;
+  return { recurrence, warnings: unique(warnings) };
 }
 
 function isSupportedRRule(rule: string): boolean {
