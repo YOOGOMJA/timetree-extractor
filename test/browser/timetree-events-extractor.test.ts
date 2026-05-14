@@ -40,10 +40,14 @@ test('follows cursor through multiple chunks until hasMore is false', async () =
 });
 
 test('respects maxPages safety bound and reports when bound is hit', async () => {
+  let since = 0;
   const result = await extractCalendarEvents({
     calendarId: 1,
     maxPages: 2,
-    fetchJson: async () => ({ events: [makeEvent('a')], chunk: true, since: 99 }),
+    fetchJson: async () => {
+      since += 10;
+      return { events: [makeEvent('a')], chunk: true, since };
+    },
   });
   assert.equal(result.ok, false);
   assert.match(result.issues.join('\n'), /maxPages/);

@@ -33,10 +33,6 @@ export async function extractCalendarEvents(input: ExtractCalendarEventsInput): 
       return { ok: true, events, lastCursor: page.page.cursor, issues: [] };
     }
 
-    if (pages >= maxPages) {
-      return { ok: false, issues: [`maxPages reached (${maxPages}); refusing to continue`] };
-    }
-
     if (cursor !== undefined && page.page.cursor <= cursor) {
       return { ok: false, issues: [`cursor did not advance: stuck at ${page.page.cursor}`] };
     }
