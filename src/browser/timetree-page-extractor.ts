@@ -82,7 +82,6 @@ export function mapApiEventToRawTimeTreeEvent(apiEvent: ApiEvent): RawTimeTreeEv
   };
 }
 
-
 function stringValue(value: unknown): string {
   return typeof value === 'string' ? value : '';
 }
