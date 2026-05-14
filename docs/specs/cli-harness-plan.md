@@ -165,6 +165,8 @@ Decision to make before implementation:
 
 Recommendation for now: **Option A for developer smoke, Option C for product boundary**. Do not build login/session handling into the CLI.
 
+- [x] **Resolved in `docs/decisions/0004-cli-browser-source.md`**: 제품 경계는 Option C, dev smoke는 Option A를 CLI 외부에서 수행. Option B는 helper/extension scope가 정해질 때 별도 decision으로 다룬다.
+
 ## Verification checklist
 
 - [ ] `npm test`
