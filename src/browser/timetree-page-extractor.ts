@@ -1,4 +1,5 @@
-import { type ExtractionWarning, type RawTimeTreeEvent, validateRawTimeTreeEvent } from '../core/contracts.js';
+import { type ExtractionWarning, type RawTimeTreeEvent } from '../core/contracts.js';
+import { extractCalendarEvents } from './timetree-events-extractor.js';
 
 export type PageFetchJson = (path: string) => Promise<unknown>;
 
@@ -34,29 +35,16 @@ export async function extractVisibleTimeTreeEvents(input: ExtractVisibleTimeTree
     return { ok: false, events: [], issues: ['Extraction must run on a TimeTree origin calendar page'] };
   }
 
-  const sinceQuery = input.since === undefined ? '' : `?since=${encodeURIComponent(String(input.since))}`;
-  const payload = await input.fetchJson(`/api/v1/calendar/${input.calendarId}/events${sinceQuery}`);
-  const payloadValidation = readEventsArray(payload);
-  if (!payloadValidation.ok) {
-    return { ok: false, calendarAlias, events: [], issues: payloadValidation.issues };
+  const result = await extractCalendarEvents({
+    calendarId: input.calendarId,
+    since: input.since,
+    fetchJson: input.fetchJson,
+  });
+
+  if (!result.ok) {
+    return { ok: false, calendarAlias, events: [], issues: result.issues };
   }
-
-  const eventsPayload = payloadValidation.events;
-  const events: RawTimeTreeEvent[] = [];
-  const issues: string[] = [];
-
-  for (const [index, apiEvent] of eventsPayload.entries()) {
-    const mapped = mapApiEventToRawTimeTreeEvent(apiEvent);
-    const validation = validateRawTimeTreeEvent(mapped);
-    if (validation.ok) {
-      events.push(validation.value);
-    } else {
-      issues.push(...validation.issues.map((issue) => `events[${index}].${issue}`));
-    }
-  }
-
-  if (issues.length > 0) return { ok: false, calendarAlias, events: [], issues };
-  return { ok: true, calendarAlias, events, issues: [] };
+  return { ok: true, calendarAlias, events: result.events, issues: [] };
 }
 
 export function mapApiEventToRawTimeTreeEvent(apiEvent: ApiEvent): RawTimeTreeEvent {
@@ -94,27 +82,6 @@ export function mapApiEventToRawTimeTreeEvent(apiEvent: ApiEvent): RawTimeTreeEv
   };
 }
 
-function readEventsArray(payload: unknown): { ok: true; events: ApiEvent[] } | { ok: false; issues: string[] } {
-  if (!isRecord(payload) || !Array.isArray(payload.events)) {
-    return { ok: false, issues: ['events must be an array'] };
-  }
-
-  const issues: string[] = [];
-  const events: ApiEvent[] = [];
-  payload.events.forEach((event, index) => {
-    if (isRecord(event)) {
-      events.push(event);
-    } else {
-      issues.push(`events[${index}] must be an object`);
-    }
-  });
-
-  return issues.length > 0 ? { ok: false, issues } : { ok: true, events };
-}
-
-function isRecord(input: unknown): input is Record<string, unknown> {
-  return input !== null && typeof input === 'object' && !Array.isArray(input);
-}
 
 function stringValue(value: unknown): string {
   return typeof value === 'string' ? value : '';

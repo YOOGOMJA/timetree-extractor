@@ -71,6 +71,8 @@ test('extracts via injected page fetch without exposing credentials or headers',
           attachment: null,
           files: [],
         }],
+        chunk: false,
+        since: 123,
       };
     },
   });
@@ -87,7 +89,7 @@ test('reports invalid page payload shape instead of treating it as empty events'
   const result = await extractVisibleTimeTreeEvents({
     locationHref: 'https://timetreeapp.com/calendars/alias123/monthly',
     calendarId: 1,
-    fetchJson: async () => ({ unexpected: [] }),
+    fetchJson: async () => ({ events: 'not-an-array', chunk: false, since: 0 }),
   });
 
   assert.equal(result.ok, false);
@@ -114,6 +116,8 @@ test('reports malformed recurrence values instead of dropping them silently', as
         attachment: null,
         files: [],
       }],
+      chunk: false,
+      since: 0,
     }),
   });
 
@@ -130,4 +134,35 @@ test('refuses extraction outside TimeTree origin', async () => {
 
   assert.equal(result.ok, false);
   assert.match(result.issues.join('\n'), /TimeTree origin/);
+});
+
+test('extractVisibleTimeTreeEvents follows pagination internally', async () => {
+  let call = 0;
+  const result = await extractVisibleTimeTreeEvents({
+    locationHref: 'https://timetreeapp.com/calendars/alias123/monthly',
+    calendarId: 1,
+    fetchJson: async () => {
+      call++;
+      if (call === 1) {
+        return {
+          events: [{
+            id: 'event-1', calendar_id: 1, title: 't', all_day: true,
+            start_at: 0, start_timezone: null, end_at: 0, end_timezone: null,
+            recurrences: [], alerts: [], attendees: [], attachment: null, files: [],
+          }],
+          chunk: true, since: 100,
+        };
+      }
+      return {
+        events: [{
+          id: 'event-2', calendar_id: 1, title: 't', all_day: true,
+          start_at: 0, start_timezone: null, end_at: 0, end_timezone: null,
+          recurrences: [], alerts: [], attendees: [], attachment: null, files: [],
+        }],
+        chunk: false, since: 200,
+      };
+    },
+  });
+  assert.equal(result.ok, true);
+  assert.equal(result.events.length, 2);
 });
