@@ -16,10 +16,12 @@
 | 8 | `specs/chrome-extension-boundary.md` | Chrome extension을 고려한 code boundary와 금지선 |
 | 9 | `specs/passive-network-observer-plan.md` | 실제 page 검증 이후 passive observer 구현 계획 |
 | 10 | `specs/passive-network-observer-test-spec.md` | passive observer TDD test gate |
-| 11 | `specs/dom-only-validation-spec.md` | 첫 milestone의 실행 spec과 pass/fail 기준 |
-| 12 | `decisions/0001-local-first-v1.md` | Google Calendar 연동이 아니라 local export로 시작하는 이유 |
-| 13 | `decisions/0002-implementation-go-no-go.md` | 구현 여부와 허용 범위 결정 |
-| 14 | `architecture-notes.md` | 검증 후 가능한 browser extension 구조 |
+| 11 | `specs/v1-export-policy.md` | v1 export 포함/제외 field와 warning 정책 |
+| 12 | `specs/dom-only-validation-spec.md` | 첫 milestone의 실행 spec과 pass/fail 기준 |
+| 13 | `decisions/0001-local-first-v1.md` | Google Calendar 연동이 아니라 local export로 시작하는 이유 |
+| 14 | `decisions/0002-implementation-go-no-go.md` | 구현 여부와 허용 범위 결정 |
+| 15 | `decisions/0003-sqlite-engine-boundary.md` | SQLite engine과 reader port 결정 |
+| 16 | `architecture-notes.md` | 검증 후 가능한 browser extension 구조 |
 
 ## 문서 작성 규칙
 

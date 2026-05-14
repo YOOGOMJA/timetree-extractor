@@ -12,6 +12,10 @@
     "node": ">=20"
   },
   "devDependencies": {
+    "@types/sql.js": "^1.4.11",
     "typescript": "^5.9.3"
+  },
+  "dependencies": {
+    "sql.js": "^1.14.1"
   }
 }

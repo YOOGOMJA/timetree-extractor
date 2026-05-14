@@ -11,3 +11,7 @@ export * from './passive-fetch-observer.js';
 export * from './observed-payload.js';
 export * from './sqlite-cache-blocks.js';
 export * from './sqlite-event-row-mapper.js';
+export * from './sqlite-event-reader.js';
+export * from './sqlite-cache-reader.js';
+export * from './indexeddb-sqlite-cache-reader.js';
+export * from './sqljs-adapter.js';

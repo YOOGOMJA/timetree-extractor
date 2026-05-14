@@ -82,3 +82,44 @@ test('marks binary recurrence and privacy-sensitive SQLite JSONB fields without 
   ]);
   assert.equal(validateRawTimeTreeEvent(raw).ok, true);
 });
+
+
+test('decodes SQLite JSONB text recurrence arrays into raw recurrence strings', () => {
+  const raw = mapSqliteEventRowToRawTimeTreeEvent({
+    id: 'event-3',
+    calendar_id: 123,
+    title: 'Recurring',
+    all_day: 0,
+    start_at: 1_767_000_000_000,
+    start_timezone: 'Asia/Seoul',
+    end_at: 1_767_003_600_000,
+    end_timezone: 'Asia/Seoul',
+    recurrences: '["RRULE:FREQ=WEEKLY;BYDAY=MO"]',
+  });
+
+  assert.deepEqual(raw.recurrences, ['RRULE:FREQ=WEEKLY;BYDAY=MO']);
+  assert.deepEqual(raw.extractionWarnings, ['internal-api-surface']);
+  assert.equal(validateRawTimeTreeEvent(raw).ok, true);
+});
+
+test('warns on decoded privacy JSON without carrying private arrays forward', () => {
+  const raw = mapSqliteEventRowToRawTimeTreeEvent({
+    id: 'event-4',
+    calendar_id: 123,
+    title: 'Private metadata',
+    all_day: 0,
+    start_at: 1_767_000_000_000,
+    start_timezone: 'Asia/Seoul',
+    end_at: 1_767_003_600_000,
+    end_timezone: 'Asia/Seoul',
+    recurrences: '[]',
+    attendees: '[1,2]',
+    attachment: '{}',
+    files: '[]',
+  });
+
+  assert.deepEqual(raw.attendees, []);
+  assert.equal(raw.attachment, null);
+  assert.deepEqual(raw.files, []);
+  assert.deepEqual(raw.extractionWarnings, ['internal-api-surface', 'shared-calendar-personal-data']);
+});

@@ -6,8 +6,8 @@ export function mapSqliteEventRowToRawTimeTreeEvent(row: SqliteEventRow): RawTim
   const warnings: ExtractionWarning[] = ['internal-api-surface'];
   const recurrences = readRecurrences(row.recurrences, warnings);
 
-  if (hasBinaryContent(row.attendees)) warnings.push('shared-calendar-personal-data');
-  if (hasBinaryContent(row.attachment) || hasBinaryContent(row.files)) warnings.push('unsupported-attachment');
+  if (hasPrivateCollectionContent(row.attendees)) warnings.push('shared-calendar-personal-data');
+  if (hasAttachmentContent(row.attachment) || hasPrivateCollectionContent(row.files)) warnings.push('unsupported-attachment');
 
   return {
     id: stringValue(row.id),
@@ -37,12 +37,49 @@ export function mapSqliteEventRowToRawTimeTreeEvent(row: SqliteEventRow): RawTim
 
 function readRecurrences(value: unknown, warnings: ExtractionWarning[]): string[] {
   if (Array.isArray(value) && value.every((item) => typeof item === 'string')) return value;
+  if (typeof value === 'string') {
+    const parsed = parseJson(value);
+    if (Array.isArray(parsed) && parsed.every((item) => typeof item === 'string')) return parsed;
+    if (hasDecodedContent(parsed)) warnings.push('recurrence-not-normalized');
+    return [];
+  }
   if (value instanceof Uint8Array && value.byteLength > 0) warnings.push('recurrence-not-normalized');
   return [];
 }
 
-function hasBinaryContent(value: unknown): boolean {
-  return value instanceof Uint8Array && value.byteLength > 0;
+function hasPrivateCollectionContent(value: unknown): boolean {
+  if (value instanceof Uint8Array) return value.byteLength > 1;
+  if (typeof value === 'string') return hasDecodedContent(parseJson(value));
+  return hasDecodedContent(value);
+}
+
+function hasAttachmentContent(value: unknown): boolean {
+  if (value instanceof Uint8Array) return value.byteLength > 1;
+  if (typeof value === 'string') {
+    const parsed = parseJson(value);
+    if (isPlainObject(parsed)) return Object.keys(parsed).length > 0;
+    return hasDecodedContent(parsed);
+  }
+  if (isPlainObject(value)) return Object.keys(value).length > 0;
+  return hasDecodedContent(value);
+}
+
+function hasDecodedContent(value: unknown): boolean {
+  if (Array.isArray(value)) return value.length > 0;
+  if (isPlainObject(value)) return Object.keys(value).length > 0;
+  return value !== null && value !== undefined;
+}
+
+function parseJson(value: string): unknown {
+  try {
+    return JSON.parse(value);
+  } catch {
+    return undefined;
+  }
+}
+
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+  return value !== null && typeof value === 'object' && !Array.isArray(value) && !(value instanceof Uint8Array);
 }
 
 function stringValue(value: unknown): string {

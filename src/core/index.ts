@@ -19,3 +19,4 @@ export {
   type NormalizedDateTime,
   type NormalizedRecurrence,
 } from './normalize.js';
+export * from './ics.js';

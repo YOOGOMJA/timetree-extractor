@@ -85,3 +85,13 @@ type NormalizationWarning =
 ## 결론
 
 `ICS`는 두 번째 구현 단계다. 첫 구현은 `RawTimeTreeEvent -> NormalizedCalendarEvent` 변환과 warning/fail policy까지이며, 실제 `.ics` file 생성은 P0/P1 fixture가 안정화된 뒤 시작한다.
+
+
+## V1 writer decision
+
+결론: v1 writer는 `NormalizedCalendarEvent`만 입력으로 받고 `ICS` text를 생성한다. TimeTree raw row나 private JSONB payload는 writer에 직접 전달하지 않는다.
+
+- timed event: `TZID` parameter를 사용한다.
+- all-day event: `VALUE=DATE`를 사용한다.
+- recurrence: normalized recurrence line을 중복 property name 없이 보존한다.
+- `VTIMEZONE`: v1에서는 생성하지 않는다.
