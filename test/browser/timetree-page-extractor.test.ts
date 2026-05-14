@@ -47,6 +47,28 @@ test('maps snake_case TimeTree API event payload to raw contract shape', () => {
   ]);
 });
 
+test('treats null updated_at and created_at the same as missing', () => {
+  const raw = mapApiEventToRawTimeTreeEvent({
+    id: 'event-null-ts',
+    calendar_id: 1,
+    title: 't',
+    all_day: true,
+    start_at: 0,
+    start_timezone: null,
+    end_at: 0,
+    end_timezone: null,
+    recurrences: [],
+    alerts: [],
+    attendees: [],
+    attachment: null,
+    files: [],
+    updated_at: null,
+    created_at: null,
+  });
+  assert.equal(raw.updatedAt, undefined);
+  assert.equal(raw.createdAt, undefined);
+});
+
 test('extracts via injected page fetch without exposing credentials or headers', async () => {
   const requested: string[] = [];
   const result = await extractVisibleTimeTreeEvents({
