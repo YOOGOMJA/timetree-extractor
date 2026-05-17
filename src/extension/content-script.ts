@@ -1,11 +1,13 @@
-import { extractVisibleTimeTreeEvents, type ExtractVisibleTimeTreeEventsResult } from '../browser/index.js';
+import { listTimeTreeCalendars } from '../browser/timetree-calendars.js';
+import { extractCalendarEvents } from '../browser/timetree-events-extractor.js';
+import type { PageFetchJson } from '../browser/timetree-page-extractor.js';
+import type {
+  ExtensionRequest,
+  FetchCalendarsResponse,
+  FetchEventsResponse,
+} from './message-protocol.js';
 
 export const TIMETREE_OBSERVER_MESSAGE_TYPE = 'TIMETREE_EXPORTER_OBSERVED_PAYLOAD';
-
-export type ContentScriptExtractionInput = {
-  calendarId: number;
-  since?: number;
-};
 
 export type ObserverMessageEvent = {
   origin: string;
@@ -17,19 +19,57 @@ export type TimeTreeObserverMessageHandlerOptions = {
   onIssue?: (issue: string) => void;
 };
 
-export async function extractFromCurrentTimeTreePage(input: ContentScriptExtractionInput): Promise<ExtractVisibleTimeTreeEventsResult> {
-  return extractVisibleTimeTreeEvents({
-    locationHref: window.location.href,
-    calendarId: input.calendarId,
-    since: input.since,
-    fetchJson: async (path) => {
-      const response = await window.fetch(path, { method: 'GET', credentials: 'same-origin' });
-      return response.json() as Promise<unknown>;
-    },
-  });
+function buildPageFetchJson(): PageFetchJson {
+  const csrfToken =
+    document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') ?? '';
+  return async (path: string) => {
+    const response = await window.fetch(path, {
+      method: 'GET',
+      credentials: 'include',
+      headers: {
+        'x-timetreea': 'web/2.1.0/en',
+        'x-csrf-token': csrfToken,
+        'content-type': 'application/json',
+      },
+    });
+    return response.json() as Promise<unknown>;
+  };
 }
 
-export function createTimeTreeObserverMessageHandler(options: TimeTreeObserverMessageHandlerOptions): (event: ObserverMessageEvent) => void {
+// eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+if (typeof chrome !== 'undefined' && chrome.runtime?.onMessage) {
+  chrome.runtime.onMessage.addListener(
+    (request: ExtensionRequest, _sender, sendResponse) => {
+    const fetchJson = buildPageFetchJson();
+
+    if (request.type === 'FETCH_CALENDARS') {
+      listTimeTreeCalendars({ fetchJson })
+        .then((result): FetchCalendarsResponse => {
+          if (result.ok) return { type: 'FETCH_CALENDARS', ok: true, calendars: result.calendars };
+          return { type: 'FETCH_CALENDARS', ok: false, issues: result.issues };
+        })
+        .then(sendResponse);
+      return true;
+    }
+
+    if (request.type === 'FETCH_EVENTS') {
+      extractCalendarEvents({ calendarId: request.calendarId, since: 0, fetchJson })
+        .then((result): FetchEventsResponse => {
+          if (result.ok) return { type: 'FETCH_EVENTS', ok: true, events: result.events };
+          return { type: 'FETCH_EVENTS', ok: false, issues: result.issues };
+        })
+        .then(sendResponse);
+      return true;
+    }
+
+    return false;
+  },
+  );
+}
+
+export function createTimeTreeObserverMessageHandler(
+  options: TimeTreeObserverMessageHandlerOptions,
+): (event: ObserverMessageEvent) => void {
   return (event) => {
     if (event.origin !== 'https://timetreeapp.com') return;
     if (!isRecord(event.data)) return;
@@ -45,7 +85,14 @@ export function createTimeTreeObserverMessageHandler(options: TimeTreeObserverMe
   };
 }
 
-const CREDENTIAL_LIKE_KEYS = new Set(['headers', 'cookie', 'authorization', 'csrf', 'token', 'access_token']);
+const CREDENTIAL_LIKE_KEYS = new Set([
+  'headers',
+  'cookie',
+  'authorization',
+  'csrf',
+  'token',
+  'access_token',
+]);
 
 function containsCredentialLikeKey(value: unknown): boolean {
   if (Array.isArray(value)) return value.some(containsCredentialLikeKey);
