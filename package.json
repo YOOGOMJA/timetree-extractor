@@ -12,6 +12,7 @@
     "node": ">=20"
   },
   "devDependencies": {
+    "@types/chrome": "^0.1.42",
     "@types/sql.js": "^1.4.11",
     "typescript": "^5.9.3"
   },
