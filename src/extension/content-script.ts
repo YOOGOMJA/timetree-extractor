@@ -36,35 +36,30 @@ function buildPageFetchJson(): PageFetchJson {
   };
 }
 
+export async function handleExtensionMessage(
+  request: ExtensionRequest,
+  fetchJson: PageFetchJson,
+): Promise<FetchCalendarsResponse | FetchEventsResponse | false> {
+  if (request.type === 'FETCH_CALENDARS') {
+    const result = await listTimeTreeCalendars({ fetchJson });
+    if (result.ok) return { type: 'FETCH_CALENDARS', ok: true, calendars: result.calendars };
+    return { type: 'FETCH_CALENDARS', ok: false, issues: result.issues };
+  }
+  if (request.type === 'FETCH_EVENTS') {
+    const result = await extractCalendarEvents({ calendarId: request.calendarId, since: 0, fetchJson });
+    if (result.ok) return { type: 'FETCH_EVENTS', ok: true, events: result.events };
+    return { type: 'FETCH_EVENTS', ok: false, issues: result.issues };
+  }
+  return false;
+}
+
 // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
 if (typeof chrome !== 'undefined' && chrome.runtime?.onMessage) {
-  chrome.runtime.onMessage.addListener(
-    (request: ExtensionRequest, _sender, sendResponse) => {
+  chrome.runtime.onMessage.addListener((request: ExtensionRequest, _sender, sendResponse) => {
     const fetchJson = buildPageFetchJson();
-
-    if (request.type === 'FETCH_CALENDARS') {
-      listTimeTreeCalendars({ fetchJson })
-        .then((result): FetchCalendarsResponse => {
-          if (result.ok) return { type: 'FETCH_CALENDARS', ok: true, calendars: result.calendars };
-          return { type: 'FETCH_CALENDARS', ok: false, issues: result.issues };
-        })
-        .then(sendResponse);
-      return true;
-    }
-
-    if (request.type === 'FETCH_EVENTS') {
-      extractCalendarEvents({ calendarId: request.calendarId, since: 0, fetchJson })
-        .then((result): FetchEventsResponse => {
-          if (result.ok) return { type: 'FETCH_EVENTS', ok: true, events: result.events };
-          return { type: 'FETCH_EVENTS', ok: false, issues: result.issues };
-        })
-        .then(sendResponse);
-      return true;
-    }
-
-    return false;
-  },
-  );
+    handleExtensionMessage(request, fetchJson).then(sendResponse);
+    return true;
+  });
 }
 
 export function createTimeTreeObserverMessageHandler(

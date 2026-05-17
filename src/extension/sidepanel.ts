@@ -7,6 +7,7 @@ import type {
   FetchCalendarsResponse,
   FetchEventsResponse,
 } from './message-protocol.js';
+import { escapeHtml, toIsoDate, errorMessage } from './sidepanel-utils.js';
 
 async function sendToContentScript<T>(request: ExtensionRequest): Promise<T> {
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
@@ -270,18 +271,3 @@ document.addEventListener('DOMContentLoaded', async () => {
   });
 });
 
-function escapeHtml(str: string): string {
-  return str
-    .replaceAll('&', '&amp;')
-    .replaceAll('<', '&lt;')
-    .replaceAll('>', '&gt;')
-    .replaceAll('"', '&quot;');
-}
-
-function toIsoDate(date: Date): string {
-  return date.toISOString().slice(0, 10);
-}
-
-function errorMessage(err: unknown): string {
-  return err instanceof Error ? err.message : String(err);
-}
