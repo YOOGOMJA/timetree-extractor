@@ -17,6 +17,10 @@ test('escapeHtml: 여러 특수문자가 섞인 경우 모두 변환한다', () 
   assert.equal(escapeHtml('<a href="x&y">'), '&lt;a href=&quot;x&amp;y&quot;&gt;');
 });
 
+test("escapeHtml: 단따옴표를 &#39;로 변환한다", () => {
+  assert.equal(escapeHtml("it's"), "it&#39;s");
+});
+
 // toIsoDate
 test('toIsoDate: Date를 YYYY-MM-DD 형식으로 반환한다', () => {
   assert.equal(toIsoDate(new Date(2024, 2, 15)), '2024-03-15');

@@ -12,7 +12,9 @@ import { escapeHtml, toIsoDate, errorMessage } from './sidepanel-utils.js';
 async function sendToContentScript<T>(request: ExtensionRequest): Promise<T> {
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
   if (!tab?.id) throw new Error('활성 탭을 찾을 수 없습니다');
-  return chrome.tabs.sendMessage(tab.id, request) as Promise<T>;
+  const res = await chrome.tabs.sendMessage(tab.id, request) as T | undefined;
+  if (res == null) throw new Error('content script에 연결할 수 없습니다. TimeTree 탭을 새로고침하세요');
+  return res;
 }
 
 async function isOnTimetree(): Promise<boolean> {
@@ -61,10 +63,19 @@ function renderCalendarList(calendars: RawTimeTreeCalendar[]): void {
   for (const cal of calendars) {
     const div = document.createElement('div');
     div.className = 'calendar-item';
-    div.innerHTML = `
-      <input type="checkbox" id="cal-${cal.id}" value="${cal.id}" checked>
-      <label for="cal-${cal.id}">${escapeHtml(cal.name)}</label>
-    `;
+
+    const checkbox = document.createElement('input');
+    checkbox.type = 'checkbox';
+    checkbox.id = `cal-${cal.id}`;
+    checkbox.value = String(cal.id);
+    checkbox.checked = true;
+
+    const label = document.createElement('label');
+    label.htmlFor = `cal-${cal.id}`;
+    label.textContent = cal.name;
+
+    div.appendChild(checkbox);
+    div.appendChild(label);
     container.appendChild(div);
   }
 }
@@ -269,6 +280,8 @@ document.addEventListener('DOMContentLoaded', async () => {
   });
 
   document.getElementById('btn-back')?.addEventListener('click', () => {
+    lastNormalized = [];
+    lastTotalFetched = 0;
     showState('setup');
   });
 
