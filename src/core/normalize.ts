@@ -92,12 +92,12 @@ export function normalizeRawTimeTreeEvent(rawEvent: unknown, context: Normalizat
 
 function normalizeStart(event: RawTimeTreeEvent): NormalizedDateTime {
   if (event.allDay) return { kind: 'date', date: toLocalDate(event.startAt) };
-  return { kind: 'date-time', epochMs: event.startAt, timezone: event.startTimezone ?? '' };
+  return { kind: 'date-time', epochMs: event.startAt, timezone: event.startTimezone as string };
 }
 
 function normalizeEnd(event: RawTimeTreeEvent): NormalizedDateTime {
   if (event.allDay) return { kind: 'date', date: toLocalDate(event.endAt) };
-  return { kind: 'date-time', epochMs: event.endAt, timezone: event.endTimezone ?? '' };
+  return { kind: 'date-time', epochMs: event.endAt, timezone: event.endTimezone as string };
 }
 
 function normalizeTitle(title: string, warnings: NormalizationWarning[]): string {
@@ -159,7 +159,7 @@ function normalizeRecurrences(recurrences: string[]): {
 
 function isSupportedRRule(rule: string): boolean {
   if (rule.startsWith('RRULE:FREQ=DAILY')) return true;
-  if (rule.startsWith('RRULE:FREQ=WEEKLY') && /;BYDAY=/.test(rule)) return true;
+  if (rule.startsWith('RRULE:FREQ=WEEKLY')) return true;
   if (rule.startsWith('RRULE:FREQ=MONTHLY')) return true;
   return false;
 }
