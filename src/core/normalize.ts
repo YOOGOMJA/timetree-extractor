@@ -89,12 +89,12 @@ export function normalizeRawTimeTreeEvent(rawEvent: unknown, context: Normalizat
 }
 
 function normalizeStart(event: RawTimeTreeEvent): NormalizedDateTime {
-  if (event.allDay) return { kind: 'date', date: toUtcDate(event.startAt) };
+  if (event.allDay) return { kind: 'date', date: toLocalDate(event.startAt) };
   return { kind: 'date-time', epochMs: event.startAt, timezone: event.startTimezone ?? '' };
 }
 
 function normalizeEnd(event: RawTimeTreeEvent): NormalizedDateTime {
-  if (event.allDay) return { kind: 'date', date: toUtcDate(event.endAt) };
+  if (event.allDay) return { kind: 'date', date: toLocalDate(event.endAt) };
   return { kind: 'date-time', epochMs: event.endAt, timezone: event.endTimezone ?? '' };
 }
 
@@ -167,8 +167,12 @@ function push(target: NormalizedRecurrence, key: keyof NormalizedRecurrence, val
   target[key].push(value);
 }
 
-function toUtcDate(epochMs: number): string {
-  return new Date(epochMs).toISOString().slice(0, 10);
+function toLocalDate(epochMs: number): string {
+  const d = new Date(epochMs);
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
 }
 
 function unique<T>(values: T[]): T[] {

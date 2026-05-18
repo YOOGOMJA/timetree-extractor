@@ -58,13 +58,17 @@ export async function handleExtensionMessage(
 if (typeof chrome !== 'undefined' && chrome.runtime?.onMessage) {
   chrome.runtime.onMessage.addListener((request: ExtensionRequest, _sender, sendResponse) => {
     const fetchJson = buildPageFetchJson();
-    handleExtensionMessage(request, fetchJson).then((res) => {
-      if (res === false) {
-        sendResponse({ ok: false, issues: [`Unknown message type: ${(request as { type: string }).type}`] });
-      } else {
-        sendResponse(res);
-      }
-    });
+    handleExtensionMessage(request, fetchJson)
+      .then((res) => {
+        if (res === false) {
+          sendResponse({ ok: false, issues: [`Unknown message type: ${(request as { type: string }).type}`] });
+        } else {
+          sendResponse(res);
+        }
+      })
+      .catch((err: unknown) => {
+        sendResponse({ ok: false, issues: [err instanceof Error ? err.message : String(err)] });
+      });
     return true;
   });
 }

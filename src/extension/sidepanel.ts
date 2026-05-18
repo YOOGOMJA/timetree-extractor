@@ -286,6 +286,8 @@ document.addEventListener('DOMContentLoaded', async () => {
   });
 
   document.getElementById('btn-retry')?.addEventListener('click', () => {
+    lastNormalized = [];
+    lastTotalFetched = 0;
     showState('idle');
   });
 });
