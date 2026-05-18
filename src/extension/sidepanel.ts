@@ -11,13 +11,13 @@ import { escapeHtml, toIsoDate, errorMessage } from './sidepanel-utils.js';
 
 async function sendToContentScript<T>(request: ExtensionRequest): Promise<T> {
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-  if (!tab.id) throw new Error('활성 탭을 찾을 수 없습니다');
+  if (!tab?.id) throw new Error('활성 탭을 찾을 수 없습니다');
   return chrome.tabs.sendMessage(tab.id, request) as Promise<T>;
 }
 
 async function isOnTimetree(): Promise<boolean> {
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-  return (tab.url ?? '').startsWith('https://timetreeapp.com');
+  return (tab?.url ?? '').startsWith('https://timetreeapp.com');
 }
 
 type State = 'idle' | 'loading' | 'setup' | 'results' | 'error';
@@ -115,7 +115,7 @@ function renderResults(
         (ev) => `
         <div class="event-item">
           <div class="title">${escapeHtml(ev.title)}</div>
-          <div class="date">${formatEventDate(ev)} · ${escapeHtml(ev.calendarName)}</div>
+          <div class="date">${escapeHtml(formatEventDate(ev))} · ${escapeHtml(ev.calendarName)}</div>
         </div>`,
       )
       .join('');
@@ -204,6 +204,7 @@ async function analyzeEvents(): Promise<void> {
   const normalized: NormalizedCalendarEvent[] = [];
   const calendarMap = new Map(loadedCalendars.map((c) => [c.id, c]));
   for (const raw of allRaw) {
+    if (raw.deactivatedAt != null) continue;
     const result = normalizeRawTimeTreeEvent(raw, { calendar: calendarMap.get(raw.calendarId) });
     if (!result.ok) continue;
     const ev = result.value;
@@ -245,7 +246,12 @@ function exportEvents(): void {
 }
 
 document.addEventListener('DOMContentLoaded', async () => {
-  const onTimetree = await isOnTimetree();
+  let onTimetree = false;
+  try {
+    onTimetree = await isOnTimetree();
+  } catch {
+    // 탭 정보를 가져올 수 없는 경우 TimeTree 외 페이지로 간주
+  }
   document.getElementById('panel-not-timetree')?.toggleAttribute('hidden', onTimetree);
   document.getElementById('panel-main')?.toggleAttribute('hidden', !onTimetree);
   if (!onTimetree) return;

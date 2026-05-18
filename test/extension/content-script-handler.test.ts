@@ -66,10 +66,12 @@ test('FETCH_EVENTS: calendarId를 API 경로에 포함시킨다', async () => {
   const requestedPaths: string[] = [];
   const fetchJson = async (path: string): Promise<unknown> => {
     requestedPaths.push(path);
-    return { events: [], next_page_token: null };
+    return { events: [], chunk: false, since: 0 };
   };
 
-  await handleExtensionMessage({ type: 'FETCH_EVENTS', calendarId: 99 }, fetchJson);
+  const res = await handleExtensionMessage({ type: 'FETCH_EVENTS', calendarId: 99 }, fetchJson);
+  assert.ok(res !== false);
+  assert.ok(res.ok);
   assert.ok(requestedPaths.some((p) => p.includes('99')));
 });
 

@@ -19,7 +19,7 @@ test('escapeHtml: 여러 특수문자가 섞인 경우 모두 변환한다', () 
 
 // toIsoDate
 test('toIsoDate: Date를 YYYY-MM-DD 형식으로 반환한다', () => {
-  assert.equal(toIsoDate(new Date('2024-03-15T00:00:00.000Z')), '2024-03-15');
+  assert.equal(toIsoDate(new Date(2024, 2, 15)), '2024-03-15');
 });
 
 test('toIsoDate: 길이가 정확히 10자리다', () => {
