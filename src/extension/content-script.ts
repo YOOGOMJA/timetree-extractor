@@ -32,6 +32,7 @@ function buildPageFetchJson(): PageFetchJson {
         'content-type': 'application/json',
       },
     });
+    if (!response.ok) throw new Error(`HTTP ${response.status}: ${path}`);
     return response.json() as Promise<unknown>;
   };
 }
@@ -57,7 +58,13 @@ export async function handleExtensionMessage(
 if (typeof chrome !== 'undefined' && chrome.runtime?.onMessage) {
   chrome.runtime.onMessage.addListener((request: ExtensionRequest, _sender, sendResponse) => {
     const fetchJson = buildPageFetchJson();
-    handleExtensionMessage(request, fetchJson).then(sendResponse);
+    handleExtensionMessage(request, fetchJson).then((res) => {
+      if (res === false) {
+        sendResponse({ ok: false, issues: [`Unknown message type: ${(request as { type: string }).type}`] });
+      } else {
+        sendResponse(res);
+      }
+    });
     return true;
   });
 }

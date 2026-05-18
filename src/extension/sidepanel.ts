@@ -217,8 +217,8 @@ async function analyzeEvents(): Promise<void> {
   }
 
   normalized.sort((a, b) => {
-    const aMs = a.start.kind === 'date-time' ? a.start.epochMs : new Date(a.start.date).getTime();
-    const bMs = b.start.kind === 'date-time' ? b.start.epochMs : new Date(b.start.date).getTime();
+    const aMs = a.start.kind === 'date-time' ? a.start.epochMs : new Date(`${a.start.date}T00:00:00`).getTime();
+    const bMs = b.start.kind === 'date-time' ? b.start.epochMs : new Date(`${b.start.date}T00:00:00`).getTime();
     return aMs - bMs;
   });
 
