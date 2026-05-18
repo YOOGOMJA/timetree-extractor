@@ -39,8 +39,8 @@ function getDateRangeMs(): { fromMs: number; toMs: number } | null {
   const fromVal = (document.getElementById('date-from') as HTMLInputElement).value;
   const toVal = (document.getElementById('date-to') as HTMLInputElement).value;
   if (!fromVal || !toVal) return null;
-  const fromMs = new Date(fromVal).getTime();
-  const toMs = new Date(toVal).getTime() + 86_400_000 - 1;
+  const fromMs = new Date(`${fromVal}T00:00:00`).getTime();
+  const toMs = new Date(`${toVal}T00:00:00`).getTime() + 86_400_000 - 1;
   if (isNaN(fromMs) || isNaN(toMs) || fromMs > toMs) return null;
   return { fromMs, toMs };
 }
