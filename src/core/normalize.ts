@@ -62,13 +62,15 @@ export function normalizeRawTimeTreeEvent(rawEvent: unknown, context: Normalizat
   const collected = collectWarnings(event);
   const labels = normalizeLabels(event, context.labels ?? []);
   const recurrenceResult = normalizeRecurrences(event.recurrences);
-  const warnings = unique([...collected, ...recurrenceResult.warnings]);
   const recurrence = recurrenceResult.recurrence;
+  const titleWarnings: NormalizationWarning[] = [];
+  const title = normalizeTitle(event.title, titleWarnings);
+  const warnings = unique([...collected, ...recurrenceResult.warnings, ...titleWarnings]);
 
   const value: NormalizedCalendarEvent = {
     uid: `timetree:${event.calendarId}:${event.id}`,
     calendarName: context.calendar?.name ?? String(event.calendarId),
-    title: normalizeTitle(event.title, warnings),
+    title,
     start: normalizeStart(event),
     end: normalizeEnd(event),
     source: {
@@ -157,7 +159,7 @@ function normalizeRecurrences(recurrences: string[]): {
 
 function isSupportedRRule(rule: string): boolean {
   if (rule.startsWith('RRULE:FREQ=DAILY')) return true;
-  if (rule.startsWith('RRULE:FREQ=WEEKLY') && /(?:^|;)BYDAY=/.test(rule.slice('RRULE:'.length))) return true;
+  if (rule.startsWith('RRULE:FREQ=WEEKLY') && /;BYDAY=/.test(rule)) return true;
   if (rule.startsWith('RRULE:FREQ=MONTHLY')) return true;
   return false;
 }
