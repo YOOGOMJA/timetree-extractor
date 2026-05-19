@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TimeTree Exporter</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: system-ui, sans-serif; font-size: 14px; color: #111; background: #fff; padding: 16px; }
+    h1 { font-size: 16px; font-weight: 600; margin-bottom: 16px; }
+    h2 { font-size: 13px; font-weight: 600; margin-bottom: 8px; color: #444; }
+    button { cursor: pointer; padding: 8px 14px; border-radius: 6px; border: none; font-size: 13px; }
+    .btn-primary { background: #2563eb; color: #fff; }
+    .btn-primary:disabled { background: #93c5fd; cursor: not-allowed; }
+    .btn-secondary { background: #f3f4f6; color: #111; border: 1px solid #d1d5db; }
+    .section { margin-bottom: 16px; }
+    label { display: block; margin-bottom: 6px; font-size: 13px; }
+    input[type="date"] { padding: 6px 8px; border: 1px solid #d1d5db; border-radius: 4px; font-size: 13px; width: 100%; margin-top: 2px; }
+    .calendar-item { display: flex; align-items: center; gap: 8px; padding: 4px 0; }
+    .calendar-item input[type="checkbox"] { width: 16px; height: 16px; }
+    .stat-row { display: flex; justify-content: space-between; padding: 4px 0; border-bottom: 1px solid #f3f4f6; }
+    .warning-item { padding: 4px 8px; background: #fef3c7; border-radius: 4px; margin-bottom: 4px; font-size: 12px; }
+    .event-item { padding: 4px 0; border-bottom: 1px solid #f3f4f6; font-size: 12px; }
+    .event-item .title { font-weight: 500; }
+    .event-item .date { color: #6b7280; font-size: 11px; }
+    .radio-group { display: flex; gap: 12px; margin-bottom: 12px; }
+    .radio-group label { display: flex; align-items: center; gap: 6px; margin: 0; }
+    .error-box { background: #fef2f2; border: 1px solid #fca5a5; border-radius: 6px; padding: 12px; color: #dc2626; font-size: 13px; }
+    .spinner { color: #6b7280; }
+    [hidden] { display: none !important; }
+  </style>
+</head>
+<body>
+  <h1>TimeTree Exporter</h1>
+
+  <div id="panel-not-timetree" hidden>
+    <p style="color:#6b7280">TimeTree 페이지에서 열어주세요.<br><code>https://timetreeapp.com</code></p>
+  </div>
+
+  <div id="panel-main" hidden>
+
+    <div id="state-idle" class="section">
+      <button id="btn-load-calendars" class="btn-primary">캘린더 불러오기</button>
+    </div>
+
+    <div id="state-loading" class="section" hidden>
+      <p class="spinner">불러오는 중…</p>
+    </div>
+
+    <div id="state-setup" class="section" hidden>
+      <div class="section">
+        <h2>캘린더 선택</h2>
+        <div id="calendar-list"></div>
+      </div>
+      <div class="section">
+        <h2>기간</h2>
+        <label>시작일<input type="date" id="date-from"></label>
+        <label style="margin-top:8px">종료일<input type="date" id="date-to"></label>
+      </div>
+      <button id="btn-analyze" class="btn-primary">분석</button>
+    </div>
+
+    <div id="state-results" hidden>
+      <div class="section">
+        <h2>분석 결과</h2>
+        <div id="analysis-stats"></div>
+      </div>
+      <div id="warnings-section" class="section" hidden>
+        <h2>경고</h2>
+        <div id="warnings-list"></div>
+      </div>
+      <div class="section">
+        <h2>이벤트 미리보기 (최대 20건)</h2>
+        <div id="event-preview"></div>
+      </div>
+      <div class="section">
+        <h2>내보내기 형식</h2>
+        <div class="radio-group">
+          <label><input type="radio" name="format" value="ics" checked> ICS</label>
+          <label><input type="radio" name="format" value="json"> JSON</label>
+        </div>
+        <button id="btn-export" class="btn-primary">내보내기</button>
+        <button id="btn-back" class="btn-secondary" style="margin-left:8px">다시 설정</button>
+      </div>
+    </div>
+
+    <div id="state-error" class="section" hidden>
+      <div class="error-box">
+        <p id="error-message"></p>
+        <button id="btn-retry" class="btn-secondary" style="margin-top:8px">다시 시도</button>
+      </div>
+    </div>
+
+  </div>
+
+  <script type="module" src="dist/src/extension/sidepanel.js"></script>
+</body>
+</html>

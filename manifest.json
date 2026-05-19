@@ -1,0 +1,31 @@
+{
+  "manifest_version": 3,
+  "name": "TimeTree Exporter",
+  "version": "0.1.0",
+  "description": "TimeTree 캘린더 이벤트를 ICS/JSON으로 내보냅니다",
+  "minimum_chrome_version": "121",
+  "permissions": [
+    "sidePanel",
+    "tabs"
+  ],
+  "host_permissions": [
+    "https://timetreeapp.com/*"
+  ],
+  "content_scripts": [
+    {
+      "matches": ["https://timetreeapp.com/*"],
+      "js": ["dist/src/extension/content-script.js"],
+      "type": "module"
+    }
+  ],
+  "side_panel": {
+    "default_path": "sidepanel.html"
+  },
+  "action": {
+    "default_title": "TimeTree Exporter 열기"
+  },
+  "background": {
+    "service_worker": "dist/src/extension/background.js",
+    "type": "module"
+  }
+}

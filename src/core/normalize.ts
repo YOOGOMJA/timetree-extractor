@@ -62,13 +62,15 @@ export function normalizeRawTimeTreeEvent(rawEvent: unknown, context: Normalizat
   const collected = collectWarnings(event);
   const labels = normalizeLabels(event, context.labels ?? []);
   const recurrenceResult = normalizeRecurrences(event.recurrences);
-  const warnings = unique([...collected, ...recurrenceResult.warnings]);
   const recurrence = recurrenceResult.recurrence;
+  const titleWarnings: NormalizationWarning[] = [];
+  const title = normalizeTitle(event.title, titleWarnings);
+  const warnings = unique([...collected, ...recurrenceResult.warnings, ...titleWarnings]);
 
   const value: NormalizedCalendarEvent = {
     uid: `timetree:${event.calendarId}:${event.id}`,
     calendarName: context.calendar?.name ?? String(event.calendarId),
-    title: normalizeTitle(event.title, warnings),
+    title,
     start: normalizeStart(event),
     end: normalizeEnd(event),
     source: {
@@ -89,13 +91,13 @@ export function normalizeRawTimeTreeEvent(rawEvent: unknown, context: Normalizat
 }
 
 function normalizeStart(event: RawTimeTreeEvent): NormalizedDateTime {
-  if (event.allDay) return { kind: 'date', date: toUtcDate(event.startAt) };
-  return { kind: 'date-time', epochMs: event.startAt, timezone: event.startTimezone ?? '' };
+  if (event.allDay) return { kind: 'date', date: toLocalDate(event.startAt) };
+  return { kind: 'date-time', epochMs: event.startAt, timezone: event.startTimezone as string };
 }
 
 function normalizeEnd(event: RawTimeTreeEvent): NormalizedDateTime {
-  if (event.allDay) return { kind: 'date', date: toUtcDate(event.endAt) };
-  return { kind: 'date-time', epochMs: event.endAt, timezone: event.endTimezone ?? '' };
+  if (event.allDay) return { kind: 'date', date: toLocalDate(event.endAt) };
+  return { kind: 'date-time', epochMs: event.endAt, timezone: event.endTimezone as string };
 }
 
 function normalizeTitle(title: string, warnings: NormalizationWarning[]): string {
@@ -157,7 +159,7 @@ function normalizeRecurrences(recurrences: string[]): {
 
 function isSupportedRRule(rule: string): boolean {
   if (rule.startsWith('RRULE:FREQ=DAILY')) return true;
-  if (rule.startsWith('RRULE:FREQ=WEEKLY') && /(?:^|;)BYDAY=/.test(rule.slice('RRULE:'.length))) return true;
+  if (rule.startsWith('RRULE:FREQ=WEEKLY')) return true;
   if (rule.startsWith('RRULE:FREQ=MONTHLY')) return true;
   return false;
 }
@@ -167,8 +169,12 @@ function push(target: NormalizedRecurrence, key: keyof NormalizedRecurrence, val
   target[key].push(value);
 }
 
-function toUtcDate(epochMs: number): string {
-  return new Date(epochMs).toISOString().slice(0, 10);
+function toLocalDate(epochMs: number): string {
+  const d = new Date(epochMs);
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
 }
 
 function unique<T>(values: T[]): T[] {

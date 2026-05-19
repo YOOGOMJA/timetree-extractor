@@ -1,11 +1,13 @@
-import { extractVisibleTimeTreeEvents, type ExtractVisibleTimeTreeEventsResult } from '../browser/index.js';
+import { listTimeTreeCalendars } from '../browser/timetree-calendars.js';
+import { extractCalendarEvents } from '../browser/timetree-events-extractor.js';
+import type { PageFetchJson } from '../browser/timetree-page-extractor.js';
+import type {
+  ExtensionRequest,
+  FetchCalendarsResponse,
+  FetchEventsResponse,
+} from './message-protocol.js';
 
 export const TIMETREE_OBSERVER_MESSAGE_TYPE = 'TIMETREE_EXPORTER_OBSERVED_PAYLOAD';
-
-export type ContentScriptExtractionInput = {
-  calendarId: number;
-  since?: number;
-};
 
 export type ObserverMessageEvent = {
   origin: string;
@@ -17,19 +19,63 @@ export type TimeTreeObserverMessageHandlerOptions = {
   onIssue?: (issue: string) => void;
 };
 
-export async function extractFromCurrentTimeTreePage(input: ContentScriptExtractionInput): Promise<ExtractVisibleTimeTreeEventsResult> {
-  return extractVisibleTimeTreeEvents({
-    locationHref: window.location.href,
-    calendarId: input.calendarId,
-    since: input.since,
-    fetchJson: async (path) => {
-      const response = await window.fetch(path, { method: 'GET', credentials: 'same-origin' });
-      return response.json() as Promise<unknown>;
-    },
+function buildPageFetchJson(): PageFetchJson {
+  const csrfToken =
+    document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') ?? '';
+  return async (path: string) => {
+    const response = await window.fetch(path, {
+      method: 'GET',
+      credentials: 'include',
+      headers: {
+        'x-timetreea': 'web/2.1.0/en',
+        'x-csrf-token': csrfToken,
+        'content-type': 'application/json',
+      },
+    });
+    if (!response.ok) throw new Error(`HTTP ${response.status}: ${path}`);
+    return response.json() as Promise<unknown>;
+  };
+}
+
+export async function handleExtensionMessage(
+  request: ExtensionRequest,
+  fetchJson: PageFetchJson,
+): Promise<FetchCalendarsResponse | FetchEventsResponse | false> {
+  if (request.type === 'FETCH_CALENDARS') {
+    const result = await listTimeTreeCalendars({ fetchJson });
+    if (result.ok) return { type: 'FETCH_CALENDARS', ok: true, calendars: result.calendars };
+    return { type: 'FETCH_CALENDARS', ok: false, issues: result.issues };
+  }
+  if (request.type === 'FETCH_EVENTS') {
+    const result = await extractCalendarEvents({ calendarId: request.calendarId, since: 0, fetchJson });
+    if (result.ok) return { type: 'FETCH_EVENTS', ok: true, events: result.events };
+    return { type: 'FETCH_EVENTS', ok: false, issues: result.issues };
+  }
+  return false;
+}
+
+// eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+if (typeof chrome !== 'undefined' && chrome.runtime?.onMessage) {
+  chrome.runtime.onMessage.addListener((request: ExtensionRequest, _sender, sendResponse) => {
+    const fetchJson = buildPageFetchJson();
+    handleExtensionMessage(request, fetchJson)
+      .then((res) => {
+        if (res === false) {
+          sendResponse({ ok: false, issues: [`Unknown message type: ${(request as { type: string }).type}`] });
+        } else {
+          sendResponse(res);
+        }
+      })
+      .catch((err: unknown) => {
+        sendResponse({ ok: false, issues: [err instanceof Error ? err.message : String(err)] });
+      });
+    return true;
   });
 }
 
-export function createTimeTreeObserverMessageHandler(options: TimeTreeObserverMessageHandlerOptions): (event: ObserverMessageEvent) => void {
+export function createTimeTreeObserverMessageHandler(
+  options: TimeTreeObserverMessageHandlerOptions,
+): (event: ObserverMessageEvent) => void {
   return (event) => {
     if (event.origin !== 'https://timetreeapp.com') return;
     if (!isRecord(event.data)) return;
@@ -45,7 +91,14 @@ export function createTimeTreeObserverMessageHandler(options: TimeTreeObserverMe
   };
 }
 
-const CREDENTIAL_LIKE_KEYS = new Set(['headers', 'cookie', 'authorization', 'csrf', 'token', 'access_token']);
+const CREDENTIAL_LIKE_KEYS = new Set([
+  'headers',
+  'cookie',
+  'authorization',
+  'csrf',
+  'token',
+  'access_token',
+]);
 
 function containsCredentialLikeKey(value: unknown): boolean {
   if (Array.isArray(value)) return value.some(containsCredentialLikeKey);
