@@ -9,7 +9,7 @@ import type {
   FetchLabelsResponse,
 } from './message-protocol.js';
 import { escapeHtml, toIsoDate, errorMessage } from './sidepanel-utils.js';
-import { parseDateRange } from './sidepanel-export-policy.js';
+import { parseDateRange, filterEventsByRange } from './sidepanel-export-policy.js';
 
 async function sendToContentScript<T>(request: ExtensionRequest): Promise<T> {
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
@@ -228,7 +228,7 @@ async function analyzeEvents(): Promise<void> {
 
   lastTotalFetched = allRaw.length;
 
-  const normalized: NormalizedCalendarEvent[] = [];
+  const normalizedAll: NormalizedCalendarEvent[] = [];
   const calendarMap = new Map(loadedCalendars.map((c) => [c.id, c]));
   for (const raw of allRaw) {
     if (raw.deactivatedAt != null) continue;
@@ -237,16 +237,10 @@ async function analyzeEvents(): Promise<void> {
       labels: labelMap.get(raw.calendarId) ?? [],
     });
     if (!result.ok) continue;
-    const ev = result.value;
-    const startMs =
-      ev.start.kind === 'date-time'
-        ? ev.start.epochMs
-        : new Date(ev.start.date + 'T00:00:00').getTime();
-    if (startMs >= range.fromMs && startMs <= range.toMs) {
-      normalized.push(ev);
-    }
+    normalizedAll.push(result.value);
   }
 
+  const normalized = filterEventsByRange(normalizedAll, range);
   normalized.sort((a, b) => {
     const aMs = a.start.kind === 'date-time' ? a.start.epochMs : new Date(`${a.start.date}T00:00:00`).getTime();
     const bMs = b.start.kind === 'date-time' ? b.start.epochMs : new Date(`${b.start.date}T00:00:00`).getTime();
