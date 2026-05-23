@@ -250,21 +250,66 @@ async function analyzeEvents(): Promise<void> {
   renderResults(normalized, lastTotalFetched);
 }
 
-function exportEvents(): void {
-  // TODO(Task 7): 모달에서 consent를 받아 전달. 현재는 임시로 true 하드코딩.
+function openWarningModal(): Promise<boolean> {
+  return new Promise((resolve) => {
+    const dialog = document.getElementById('warning-modal') as HTMLDialogElement | null;
+    const checkbox = document.getElementById('warning-consent') as HTMLInputElement | null;
+    const confirmBtn = document.getElementById('btn-warning-confirm') as HTMLButtonElement | null;
+    const cancelBtn = document.getElementById('btn-warning-cancel') as HTMLButtonElement | null;
+    if (!dialog || !checkbox || !confirmBtn || !cancelBtn) {
+      resolve(false);
+      return;
+    }
+
+    checkbox.checked = false;
+    confirmBtn.disabled = true;
+
+    const onChange = () => {
+      confirmBtn.disabled = !checkbox.checked;
+    };
+    const cleanup = () => {
+      checkbox.removeEventListener('change', onChange);
+      confirmBtn.removeEventListener('click', onConfirm);
+      cancelBtn.removeEventListener('click', onCancel);
+      dialog.close();
+    };
+    const onConfirm = () => {
+      const consented = checkbox.checked;
+      cleanup();
+      resolve(consented);
+    };
+    const onCancel = () => {
+      cleanup();
+      resolve(false);
+    };
+
+    checkbox.addEventListener('change', onChange);
+    confirmBtn.addEventListener('click', onConfirm);
+    cancelBtn.addEventListener('click', onCancel);
+    dialog.showModal();
+  });
+}
+
+async function exportEvents(): Promise<void> {
+  if (lastNormalized.length === 0) {
+    showError('내보낼 이벤트가 없습니다');
+    return;
+  }
+
+  const consent = await openWarningModal();
+
   const decision = decideExport({
-    consent: true,
+    consent,
     events: lastNormalized,
     format: getSelectedFormat(),
     now: new Date(),
   });
 
   if (!decision.allowed) {
-    if (decision.reason === 'empty-events') {
-      showError('내보낼 이벤트가 없습니다');
-    } else {
-      showError('공유 캘린더 경고에 동의해야 내보낼 수 있습니다');
+    if (decision.reason === 'no-consent') {
+      return; // 사용자가 동의하지 않음 — 조용히 종료
     }
+    showError('내보낼 이벤트가 없습니다');
     return;
   }
 
