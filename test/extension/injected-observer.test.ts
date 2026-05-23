@@ -75,7 +75,7 @@ test('injected-observer: 송신 payload에 credential-like 키가 없다', async
   await new Promise<void>((resolve) => setTimeout(resolve, 0));
 
   const flat = JSON.stringify(posts);
-  for (const forbidden of ['cookie', 'authorization', 'csrf', 'token', 'access_token']) {
+  for (const forbidden of ['headers', 'cookie', 'authorization', 'csrf', 'token', 'access_token']) {
     assert.equal(flat.toLowerCase().includes(`"${forbidden}"`), false, `${forbidden}가 송신 payload에 포함됨`);
   }
 });
@@ -90,10 +90,9 @@ test('injected-observer: 송신 data는 type과 payload만 포함한다', async 
   assert.equal(posts.length, 1);
   const data = posts[0].data as Record<string, unknown>;
   assert.equal(data.type, 'TIMETREE_EXPORTER_OBSERVED_PAYLOAD');
-  assert.ok('payload' in data);
+  assert.deepEqual(Object.keys(data).sort(), ['payload', 'type']);
   const payload = data.payload as Record<string, unknown>;
-  assert.ok('endpoint' in payload);
-  assert.ok('summary' in payload);
+  assert.deepEqual(Object.keys(payload).sort(), ['endpoint', 'summary']);
 });
 
 test('injected-observer: uninstall 호출 시 원본 fetch가 복원된다', async () => {
