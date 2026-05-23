@@ -17,9 +17,9 @@ export function createIcsCalendar(events: NormalizedCalendarEvent[], options: Cr
     'METHOD:PUBLISH',
   ];
 
-  const tzids = collectTzids(events);
-  for (const tzid of tzids) {
-    lines.push(...createVtimezoneLines(tzid));
+  const tzidMap = collectTzids(events);
+  for (const [tzid, ref] of tzidMap) {
+    lines.push(...createVtimezoneLines(tzid, ref));
   }
 
   for (const event of events) {
@@ -30,19 +30,34 @@ export function createIcsCalendar(events: NormalizedCalendarEvent[], options: Cr
   return `${lines.map(foldLine).join('\r\n')}\r\n`;
 }
 
-function collectTzids(events: NormalizedCalendarEvent[]): string[] {
-  const tzids = new Set<string>();
+// Stable fallback reference instant (mid-January 2025) used only when a TZID is
+// observed solely via a recurrence parameter and the calendar has no datetime
+// event in that zone to anchor the offset.
+const FALLBACK_REFERENCE_MS = Date.UTC(2025, 0, 15);
+
+function collectTzids(events: NormalizedCalendarEvent[]): Map<string, number> {
+  const tzids = new Map<string, number>();
+  const recordTzid = (tzid: string, referenceMs: number | undefined): void => {
+    if (tzids.has(tzid)) return;
+    tzids.set(tzid, referenceMs ?? FALLBACK_REFERENCE_MS);
+  };
   for (const event of events) {
-    if (event.start.kind === 'date-time') tzids.add(event.start.timezone);
-    if (event.end.kind === 'date-time') tzids.add(event.end.timezone);
+    const eventReference =
+      event.start.kind === 'date-time'
+        ? event.start.epochMs
+        : event.end.kind === 'date-time'
+          ? event.end.epochMs
+          : undefined;
+    if (event.start.kind === 'date-time') recordTzid(event.start.timezone, event.start.epochMs);
+    if (event.end.kind === 'date-time') recordTzid(event.end.timezone, event.end.epochMs);
     if (event.recurrence) {
       for (const line of recurrenceLines(event.recurrence)) {
         const match = /TZID=("[^"]+"|[^;:]+)/i.exec(line);
-        if (match) tzids.add(match[1].replace(/^"|"$/g, ''));
+        if (match) recordTzid(match[1].replace(/^"|"$/g, ''), eventReference);
       }
     }
   }
-  return Array.from(tzids);
+  return tzids;
 }
 
 function recurrenceLines(recurrence: NormalizedRecurrence): string[] {
@@ -54,9 +69,16 @@ function recurrenceLines(recurrence: NormalizedRecurrence): string[] {
   ];
 }
 
-// v1: STANDARD-only, no DST transitions modeled — see issue #5 for the tradeoff.
-function createVtimezoneLines(tzid: string): string[] {
-  const offset = resolveTimezoneOffset(tzid);
+// v1: STANDARD-only — we emit a single STANDARD subcomponent per TZID with the
+// offset derived from the first observed event time in that zone. This keeps
+// single-phase exports correct (e.g. an all-January America/New_York calendar
+// gets -0500, an all-July calendar gets -0400). It still cannot model an export
+// that spans a DST transition for the same TZID: such a calendar will report
+// the offset from the first event and be off by an hour for events on the
+// other side of the transition. Modeling DAYLIGHT + RRULE-based transitions is
+// deferred (see issue #5).
+function createVtimezoneLines(tzid: string, referenceMs: number): string[] {
+  const offset = resolveTimezoneOffset(tzid, referenceMs);
   const tzname = resolveTimezoneShortName(tzid, offset);
   const lines = [
     'BEGIN:VTIMEZONE',
@@ -71,10 +93,10 @@ function createVtimezoneLines(tzid: string): string[] {
   return lines;
 }
 
-function resolveTimezoneOffset(tzid: string): string {
+function resolveTimezoneOffset(tzid: string, referenceMs: number): string {
   try {
     const formatter = new Intl.DateTimeFormat('en-US', { timeZone: tzid, timeZoneName: 'longOffset' });
-    const part = formatter.formatToParts(new Date()).find((p) => p.type === 'timeZoneName');
+    const part = formatter.formatToParts(new Date(referenceMs)).find((p) => p.type === 'timeZoneName');
     return parseLongOffset(part?.value);
   } catch {
     return '+0000';

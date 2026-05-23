@@ -193,6 +193,43 @@ test('emits a VTIMEZONE for a TZID referenced only inside a recurrence line', ()
   assert.match(unfolded, /TZOFFSETTO:\+0000\r\n/);
 });
 
+test('derives America/New_York VTIMEZONE offset from event time (January is EST -0500, July is EDT -0400)', () => {
+  const januaryEvent = normalized({
+    ...timedEventFixture,
+    id: 'event-ny-january-1',
+    startTimezone: 'America/New_York',
+    endTimezone: 'America/New_York',
+    startAt: Date.UTC(2026, 0, 15, 17, 0, 0),
+    endAt: Date.UTC(2026, 0, 15, 18, 0, 0),
+  });
+  const julyEvent = normalized({
+    ...timedEventFixture,
+    id: 'event-ny-july-1',
+    startTimezone: 'America/New_York',
+    endTimezone: 'America/New_York',
+    startAt: Date.UTC(2026, 6, 15, 17, 0, 0),
+    endAt: Date.UTC(2026, 6, 15, 18, 0, 0),
+  });
+
+  const januaryIcs = createIcsCalendar([januaryEvent], {
+    now: new Date(Date.UTC(2026, 0, 1, 0, 0, 0)),
+  });
+  const julyIcs = createIcsCalendar([julyEvent], {
+    now: new Date(Date.UTC(2026, 0, 1, 0, 0, 0)),
+  });
+
+  const januaryUnfolded = januaryIcs.replaceAll('\r\n ', '');
+  const julyUnfolded = julyIcs.replaceAll('\r\n ', '');
+
+  assert.match(januaryUnfolded, /TZID:America\/New_York\r\n/);
+  assert.match(januaryUnfolded, /TZOFFSETFROM:-0500\r\n/);
+  assert.match(januaryUnfolded, /TZOFFSETTO:-0500\r\n/);
+
+  assert.match(julyUnfolded, /TZID:America\/New_York\r\n/);
+  assert.match(julyUnfolded, /TZOFFSETFROM:-0400\r\n/);
+  assert.match(julyUnfolded, /TZOFFSETTO:-0400\r\n/);
+});
+
 test('emits two VTIMEZONE blocks for a mixed Asia/Seoul + UTC calendar', () => {
   const seoulEvent = normalized(timedEventFixture);
   const utcEvent = normalized({
