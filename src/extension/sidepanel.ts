@@ -1,11 +1,12 @@
 import { normalizeRawTimeTreeEvent } from '../core/normalize.js';
 import { createIcsCalendar } from '../core/ics.js';
-import type { RawTimeTreeCalendar, RawTimeTreeEvent } from '../core/contracts.js';
+import type { RawTimeTreeCalendar, RawTimeTreeEvent, RawTimeTreeLabel } from '../core/contracts.js';
 import type { NormalizedCalendarEvent } from '../core/normalize.js';
 import type {
   ExtensionRequest,
   FetchCalendarsResponse,
   FetchEventsResponse,
+  FetchLabelsResponse,
 } from './message-protocol.js';
 import { escapeHtml, toIsoDate, errorMessage } from './sidepanel-utils.js';
 
@@ -193,6 +194,7 @@ async function analyzeEvents(): Promise<void> {
   showState('loading');
 
   const allRaw: RawTimeTreeEvent[] = [];
+  const labelMap = new Map<number, RawTimeTreeLabel[]>();
   for (const calendarId of calendarIds) {
     try {
       const res = await sendToContentScript<FetchEventsResponse>({
@@ -208,6 +210,23 @@ async function analyzeEvents(): Promise<void> {
       showError(`오류: ${errorMessage(err)}`);
       return;
     }
+
+    // 라벨 fetch는 soft fallback: 실패해도 export를 막지 않고 해당 캘린더만 빈 라벨로 진행.
+    try {
+      const labelRes = await sendToContentScript<FetchLabelsResponse>({
+        type: 'FETCH_LABELS',
+        calendarId,
+      });
+      if (labelRes.ok) {
+        labelMap.set(calendarId, labelRes.labels);
+      } else {
+        console.warn(`라벨 로드 실패 (calendar ${calendarId}); 빈 라벨로 진행`, labelRes.issues);
+        labelMap.set(calendarId, []);
+      }
+    } catch (err) {
+      console.warn(`라벨 로드 오류 (calendar ${calendarId}); 빈 라벨로 진행`, errorMessage(err));
+      labelMap.set(calendarId, []);
+    }
   }
 
   lastTotalFetched = allRaw.length;
@@ -216,7 +235,10 @@ async function analyzeEvents(): Promise<void> {
   const calendarMap = new Map(loadedCalendars.map((c) => [c.id, c]));
   for (const raw of allRaw) {
     if (raw.deactivatedAt != null) continue;
-    const result = normalizeRawTimeTreeEvent(raw, { calendar: calendarMap.get(raw.calendarId) });
+    const result = normalizeRawTimeTreeEvent(raw, {
+      calendar: calendarMap.get(raw.calendarId),
+      labels: labelMap.get(raw.calendarId) ?? [],
+    });
     if (!result.ok) continue;
     const ev = result.value;
     const startMs =

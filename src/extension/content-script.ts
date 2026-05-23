@@ -1,10 +1,12 @@
 import { listTimeTreeCalendars } from '../browser/timetree-calendars.js';
 import { extractCalendarEvents } from '../browser/timetree-events-extractor.js';
+import { listTimeTreeLabels } from '../browser/timetree-labels.js';
 import type { PageFetchJson } from '../browser/timetree-page-extractor.js';
 import type {
   ExtensionRequest,
   FetchCalendarsResponse,
   FetchEventsResponse,
+  FetchLabelsResponse,
 } from './message-protocol.js';
 
 export const TIMETREE_OBSERVER_MESSAGE_TYPE = 'TIMETREE_EXPORTER_OBSERVED_PAYLOAD';
@@ -40,7 +42,7 @@ function buildPageFetchJson(): PageFetchJson {
 export async function handleExtensionMessage(
   request: ExtensionRequest,
   fetchJson: PageFetchJson,
-): Promise<FetchCalendarsResponse | FetchEventsResponse | false> {
+): Promise<FetchCalendarsResponse | FetchEventsResponse | FetchLabelsResponse | false> {
   if (request.type === 'FETCH_CALENDARS') {
     const result = await listTimeTreeCalendars({ fetchJson });
     if (result.ok) return { type: 'FETCH_CALENDARS', ok: true, calendars: result.calendars };
@@ -50,6 +52,11 @@ export async function handleExtensionMessage(
     const result = await extractCalendarEvents({ calendarId: request.calendarId, since: 0, fetchJson });
     if (result.ok) return { type: 'FETCH_EVENTS', ok: true, events: result.events };
     return { type: 'FETCH_EVENTS', ok: false, issues: result.issues };
+  }
+  if (request.type === 'FETCH_LABELS') {
+    const result = await listTimeTreeLabels({ calendarId: request.calendarId, fetchJson });
+    if (result.ok) return { type: 'FETCH_LABELS', ok: true, labels: result.labels };
+    return { type: 'FETCH_LABELS', ok: false, issues: result.issues };
   }
   return false;
 }

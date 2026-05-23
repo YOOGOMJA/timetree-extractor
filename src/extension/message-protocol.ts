@@ -1,4 +1,4 @@
-import type { RawTimeTreeCalendar, RawTimeTreeEvent } from '../core/contracts.js';
+import type { RawTimeTreeCalendar, RawTimeTreeEvent, RawTimeTreeLabel } from '../core/contracts.js';
 
 export type FetchCalendarsRequest = { type: 'FETCH_CALENDARS' };
 
@@ -7,7 +7,12 @@ export type FetchEventsRequest = {
   calendarId: number;
 };
 
-export type ExtensionRequest = FetchCalendarsRequest | FetchEventsRequest;
+export type FetchLabelsRequest = {
+  type: 'FETCH_LABELS';
+  calendarId: number;
+};
+
+export type ExtensionRequest = FetchCalendarsRequest | FetchEventsRequest | FetchLabelsRequest;
 
 export type FetchCalendarsResponse = {
   type: 'FETCH_CALENDARS';
@@ -29,4 +34,14 @@ export type FetchEventsResponse = {
   issues: string[];
 };
 
-export type ExtensionResponse = FetchCalendarsResponse | FetchEventsResponse;
+export type FetchLabelsResponse = {
+  type: 'FETCH_LABELS';
+  ok: true;
+  labels: RawTimeTreeLabel[];
+} | {
+  type: 'FETCH_LABELS';
+  ok: false;
+  issues: string[];
+};
+
+export type ExtensionResponse = FetchCalendarsResponse | FetchEventsResponse | FetchLabelsResponse;
