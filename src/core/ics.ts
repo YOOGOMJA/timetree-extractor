@@ -60,7 +60,8 @@ function formatRecurrenceLines(recurrence: NormalizedRecurrence): string[] {
 }
 
 function formatRuleLine(name: string, line: string): string {
-  return line.startsWith(`${name}:`) ? line : `${name}:${line}`;
+  if (line.startsWith(`${name}:`) || line.startsWith(`${name};`)) return line;
+  return `${name}:${line}`;
 }
 
 function formatUtcDateTime(date: Date): string {
