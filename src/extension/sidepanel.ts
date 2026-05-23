@@ -9,7 +9,7 @@ import type {
   FetchLabelsResponse,
 } from './message-protocol.js';
 import { escapeHtml, toIsoDate, errorMessage } from './sidepanel-utils.js';
-import { parseDateRange, filterEventsByRange } from './sidepanel-export-policy.js';
+import { parseDateRange, filterEventsByRange, aggregateWarnings } from './sidepanel-export-policy.js';
 
 async function sendToContentScript<T>(request: ExtensionRequest): Promise<T> {
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
@@ -89,12 +89,7 @@ function renderResults(
   totalFetched: number,
 ): void {
   const statsEl = document.getElementById('analysis-stats')!;
-  const warningCounts: Record<string, number> = {};
-  for (const ev of events) {
-    for (const w of ev.warnings) {
-      warningCounts[w] = (warningCounts[w] ?? 0) + 1;
-    }
-  }
+  const warningCounts = aggregateWarnings(events);
   statsEl.innerHTML = `
     <div class="stat-row"><span>전체 fetch</span><span>${totalFetched}건</span></div>
     <div class="stat-row"><span>기간 내 이벤트</span><span>${events.length}건</span></div>

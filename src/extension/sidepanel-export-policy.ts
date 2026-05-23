@@ -26,3 +26,15 @@ export function filterEventsByRange(
     return startMs >= range.fromMs && startMs <= range.toMs;
   });
 }
+
+export function aggregateWarnings(
+  events: NormalizedCalendarEvent[],
+): Record<string, number> {
+  const counts: Record<string, number> = {};
+  for (const event of events) {
+    for (const warning of event.warnings) {
+      counts[warning] = (counts[warning] ?? 0) + 1;
+    }
+  }
+  return counts;
+}
