@@ -14,8 +14,7 @@
   "content_scripts": [
     {
       "matches": ["https://timetreeapp.com/*"],
-      "js": ["dist/src/extension/content-script.js"],
-      "type": "module"
+      "js": ["dist/src/extension/content-script.bundle.js"]
     }
   ],
   "side_panel": {
