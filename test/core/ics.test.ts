@@ -48,6 +48,40 @@ test('preserves normalized recurrence lines without duplicating property names',
   assert.doesNotMatch(ics, /RRULE:RRULE:/);
 });
 
+test('does not duplicate property name for RDATE lines with parameters', () => {
+  const event = normalized({
+    ...timedEventFixture,
+    id: 'event-rdate-with-params',
+    recurrences: ['RDATE;TZID="UTC";VALUE=DATE:20260905,20270825'],
+    recurringUuid: 'recurring-rdate-1',
+  });
+
+  const ics = createIcsCalendar([event], {
+    now: new Date(Date.UTC(2026, 0, 1, 0, 0, 0)),
+  });
+
+  assert.doesNotMatch(ics, /RDATE:RDATE/);
+  const unfolded = ics.replaceAll('\r\n ', '');
+  assert.match(unfolded, /RDATE;TZID="UTC";VALUE=DATE:20260905,20270825\r\n/);
+});
+
+test('does not duplicate property name for EXDATE lines with parameters', () => {
+  const event = normalized({
+    ...timedEventFixture,
+    id: 'event-exdate-with-params',
+    recurrences: ['RRULE:FREQ=WEEKLY;BYDAY=MO', 'EXDATE;TZID="UTC";VALUE=DATE:20260907'],
+    recurringUuid: 'recurring-exdate-1',
+  });
+
+  const ics = createIcsCalendar([event], {
+    now: new Date(Date.UTC(2026, 0, 1, 0, 0, 0)),
+  });
+
+  assert.doesNotMatch(ics, /EXDATE:EXDATE/);
+  const unfolded = ics.replaceAll('\r\n ', '');
+  assert.match(unfolded, /EXDATE;TZID="UTC";VALUE=DATE:20260907\r\n/);
+});
+
 test('preserves URL property without TEXT escaping', () => {
   const event = normalized({
     ...timedEventFixture,
