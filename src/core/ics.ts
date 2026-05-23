@@ -17,12 +17,131 @@ export function createIcsCalendar(events: NormalizedCalendarEvent[], options: Cr
     'METHOD:PUBLISH',
   ];
 
+  const tzidMap = collectTzids(events);
+  for (const [tzid, ref] of tzidMap) {
+    lines.push(...createVtimezoneLines(tzid, ref));
+  }
+
   for (const event of events) {
     lines.push(...createIcsEventLines(event, timestamp));
   }
 
   lines.push('END:VCALENDAR');
   return `${lines.map(foldLine).join('\r\n')}\r\n`;
+}
+
+// Stable fallback reference instant (mid-January 2025) used only when a TZID is
+// observed solely via a recurrence parameter and the calendar has no datetime
+// event in that zone to anchor the offset.
+const FALLBACK_REFERENCE_MS = Date.UTC(2025, 0, 15);
+
+function collectTzids(events: NormalizedCalendarEvent[]): Map<string, number> {
+  const tzids = new Map<string, number>();
+  const recordTzid = (tzid: string, referenceMs: number | undefined): void => {
+    if (tzids.has(tzid)) return;
+    tzids.set(tzid, referenceMs ?? FALLBACK_REFERENCE_MS);
+  };
+  for (const event of events) {
+    const eventReference =
+      event.start.kind === 'date-time'
+        ? event.start.epochMs
+        : event.end.kind === 'date-time'
+          ? event.end.epochMs
+          : undefined;
+    if (event.start.kind === 'date-time') recordTzid(event.start.timezone, event.start.epochMs);
+    if (event.end.kind === 'date-time') recordTzid(event.end.timezone, event.end.epochMs);
+    if (event.recurrence) {
+      for (const line of recurrenceLines(event.recurrence)) {
+        const match = /TZID=("[^"]+"|[^;:]+)/i.exec(line);
+        if (match) recordTzid(match[1].replace(/^"|"$/g, ''), eventReference);
+      }
+    }
+  }
+  return tzids;
+}
+
+function recurrenceLines(recurrence: NormalizedRecurrence): string[] {
+  return [
+    ...(recurrence.rrule ?? []),
+    ...(recurrence.rdate ?? []),
+    ...(recurrence.exrule ?? []),
+    ...(recurrence.exdate ?? []),
+  ];
+}
+
+// v1: STANDARD-only — we emit a single STANDARD subcomponent per TZID with the
+// offset derived from the first observed event time in that zone. This keeps
+// single-phase exports correct (e.g. an all-January America/New_York calendar
+// gets -0500, an all-July calendar gets -0400). It still cannot model an export
+// that spans a DST transition for the same TZID: such a calendar will report
+// the offset from the first event and be off by an hour for events on the
+// other side of the transition. Modeling DAYLIGHT + RRULE-based transitions is
+// deferred (see issue #5).
+function createVtimezoneLines(tzid: string, referenceMs: number): string[] {
+  const offset = resolveTimezoneOffset(tzid, referenceMs);
+  const tzname = resolveTimezoneShortName(tzid, offset);
+  const lines = [
+    'BEGIN:VTIMEZONE',
+    `TZID:${tzid}`,
+    'BEGIN:STANDARD',
+    'DTSTART:19700101T000000',
+    `TZOFFSETFROM:${offset}`,
+    `TZOFFSETTO:${offset}`,
+  ];
+  if (tzname) lines.push(`TZNAME:${tzname}`);
+  lines.push('END:STANDARD', 'END:VTIMEZONE');
+  return lines;
+}
+
+function resolveTimezoneOffset(tzid: string, referenceMs: number): string {
+  try {
+    const formatter = new Intl.DateTimeFormat('en-US', { timeZone: tzid, timeZoneName: 'longOffset' });
+    const part = formatter.formatToParts(new Date(referenceMs)).find((p) => p.type === 'timeZoneName');
+    return parseLongOffset(part?.value);
+  } catch {
+    return '+0000';
+  }
+}
+
+function parseLongOffset(longOffset: string | undefined): string {
+  if (!longOffset) return '+0000';
+  // "GMT" alone (UTC) or "GMT+09:00" / "GMT-05:30".
+  if (longOffset === 'GMT' || longOffset === 'UTC') return '+0000';
+  const match = /GMT([+-])(\d{1,2})(?::?(\d{2}))?/.exec(longOffset);
+  if (!match) return '+0000';
+  const sign = match[1];
+  const hours = match[2].padStart(2, '0');
+  const minutes = (match[3] ?? '00').padStart(2, '0');
+  return `${sign}${hours}${minutes}`;
+}
+
+// Common IANA → RFC 5545 TZNAME mapping. Intl's `short` formatter returns
+// GMT-style offsets for many zones (e.g. "GMT+9" for Asia/Seoul) which is not a
+// useful TZNAME, so we map a small set of well-known zones explicitly and fall
+// back to Intl / offset only when no entry matches.
+const STATIC_TZ_SHORT_NAMES: Record<string, string> = {
+  UTC: 'UTC',
+  'Etc/UTC': 'UTC',
+  'Asia/Seoul': 'KST',
+  'Asia/Tokyo': 'JST',
+};
+
+function resolveTimezoneShortName(tzid: string, offset: string): string | undefined {
+  const mapped = STATIC_TZ_SHORT_NAMES[tzid];
+  if (mapped) return mapped;
+  try {
+    const formatter = new Intl.DateTimeFormat('en-US', { timeZone: tzid, timeZoneName: 'short' });
+    const part = formatter.formatToParts(new Date()).find((p) => p.type === 'timeZoneName');
+    const value = part?.value;
+    if (!value) return undefined;
+    // Fall back when the short name is just another offset rendering (e.g. "GMT+9").
+    if (/^GMT([+-]\d|$)/.test(value) || /^UTC([+-]\d|$)/.test(value)) {
+      return value === 'GMT' || value === 'UTC' ? value : offset;
+    }
+    return value;
+  } catch {
+    return undefined;
+  }
 }
 
 function createIcsEventLines(event: NormalizedCalendarEvent, timestamp: string): string[] {
