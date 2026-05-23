@@ -127,3 +127,88 @@ test('escapes ICS text values', () => {
   assert.match(ics, /SUMMARY:Comma\\, semicolon\\; slash\\\\ newline\\ntext\r\n/);
   assert.match(ics, /DESCRIPTION:Line 1\\nLine 2\r\n/);
 });
+
+test('emits a VTIMEZONE block for Asia/Seoul when a timed event uses it', () => {
+  const ics = createIcsCalendar([normalized(timedEventFixture)], {
+    now: new Date(Date.UTC(2026, 0, 1, 0, 0, 0)),
+  });
+
+  const unfolded = ics.replaceAll('\r\n ', '');
+  assert.match(unfolded, /BEGIN:VTIMEZONE\r\nTZID:Asia\/Seoul\r\n/);
+  assert.match(unfolded, /BEGIN:STANDARD\r\n[\s\S]*?TZOFFSETFROM:\+0900\r\n/);
+  assert.match(unfolded, /BEGIN:STANDARD\r\n[\s\S]*?TZOFFSETTO:\+0900\r\n/);
+  assert.match(unfolded, /TZNAME:KST\r\n/);
+  assert.match(unfolded, /END:STANDARD\r\nEND:VTIMEZONE\r\n/);
+});
+
+test('places every VTIMEZONE block before the first VEVENT', () => {
+  const ics = createIcsCalendar([normalized(timedEventFixture)], {
+    now: new Date(Date.UTC(2026, 0, 1, 0, 0, 0)),
+  });
+
+  const firstVtimezone = ics.indexOf('BEGIN:VTIMEZONE');
+  const firstVevent = ics.indexOf('BEGIN:VEVENT');
+  assert.notStrictEqual(firstVtimezone, -1, 'expected a VTIMEZONE block');
+  assert.notStrictEqual(firstVevent, -1, 'expected a VEVENT block');
+  assert.ok(firstVtimezone < firstVevent, 'VTIMEZONE must precede VEVENT');
+});
+
+test('emits only one VTIMEZONE block when many events share a single TZID', () => {
+  const ics = createIcsCalendar(
+    [
+      normalized({ ...timedEventFixture, id: 'event-shared-tz-1' }),
+      normalized({ ...timedEventFixture, id: 'event-shared-tz-2' }),
+      normalized({ ...timedEventFixture, id: 'event-shared-tz-3' }),
+    ],
+    { now: new Date(Date.UTC(2026, 0, 1, 0, 0, 0)) },
+  );
+
+  const matches = ics.match(/BEGIN:VTIMEZONE/g) ?? [];
+  assert.equal(matches.length, 1, 'expected exactly one VTIMEZONE for a shared TZID');
+});
+
+test('emits no VTIMEZONE block when only all-day events are exported', () => {
+  const ics = createIcsCalendar([normalized(allDayEventFixture)], {
+    now: new Date(Date.UTC(2026, 0, 1, 0, 0, 0)),
+  });
+
+  assert.doesNotMatch(ics, /BEGIN:VTIMEZONE/);
+});
+
+test('emits a VTIMEZONE for a TZID referenced only inside a recurrence line', () => {
+  const event = normalized({
+    ...allDayEventFixture,
+    id: 'event-rdate-utc-only',
+    recurrences: ['RDATE;TZID="UTC";VALUE=DATE:20260905,20270825'],
+    recurringUuid: 'recurring-utc-rdate-1',
+  });
+
+  const ics = createIcsCalendar([event], {
+    now: new Date(Date.UTC(2026, 0, 1, 0, 0, 0)),
+  });
+
+  const unfolded = ics.replaceAll('\r\n ', '');
+  assert.match(unfolded, /BEGIN:VTIMEZONE\r\nTZID:UTC\r\n/);
+  assert.match(unfolded, /TZOFFSETFROM:\+0000\r\n/);
+  assert.match(unfolded, /TZOFFSETTO:\+0000\r\n/);
+});
+
+test('emits two VTIMEZONE blocks for a mixed Asia/Seoul + UTC calendar', () => {
+  const seoulEvent = normalized(timedEventFixture);
+  const utcEvent = normalized({
+    ...timedEventFixture,
+    id: 'event-mixed-utc-1',
+    startTimezone: 'UTC',
+    endTimezone: 'UTC',
+  });
+
+  const ics = createIcsCalendar([seoulEvent, utcEvent], {
+    now: new Date(Date.UTC(2026, 0, 1, 0, 0, 0)),
+  });
+
+  const matches = ics.match(/BEGIN:VTIMEZONE/g) ?? [];
+  assert.equal(matches.length, 2, 'expected one VTIMEZONE block per unique TZID');
+  const unfolded = ics.replaceAll('\r\n ', '');
+  assert.match(unfolded, /TZID:Asia\/Seoul\r\n/);
+  assert.match(unfolded, /TZID:UTC\r\n/);
+});

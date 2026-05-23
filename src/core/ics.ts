@@ -17,12 +17,109 @@ export function createIcsCalendar(events: NormalizedCalendarEvent[], options: Cr
     'METHOD:PUBLISH',
   ];
 
+  const tzids = collectTzids(events);
+  for (const tzid of tzids) {
+    lines.push(...createVtimezoneLines(tzid));
+  }
+
   for (const event of events) {
     lines.push(...createIcsEventLines(event, timestamp));
   }
 
   lines.push('END:VCALENDAR');
   return `${lines.map(foldLine).join('\r\n')}\r\n`;
+}
+
+function collectTzids(events: NormalizedCalendarEvent[]): string[] {
+  const tzids = new Set<string>();
+  for (const event of events) {
+    if (event.start.kind === 'date-time') tzids.add(event.start.timezone);
+    if (event.end.kind === 'date-time') tzids.add(event.end.timezone);
+    if (event.recurrence) {
+      for (const line of recurrenceLines(event.recurrence)) {
+        const match = /TZID=("[^"]+"|[^;:]+)/i.exec(line);
+        if (match) tzids.add(match[1].replace(/^"|"$/g, ''));
+      }
+    }
+  }
+  return Array.from(tzids);
+}
+
+function recurrenceLines(recurrence: NormalizedRecurrence): string[] {
+  return [
+    ...(recurrence.rrule ?? []),
+    ...(recurrence.rdate ?? []),
+    ...(recurrence.exrule ?? []),
+    ...(recurrence.exdate ?? []),
+  ];
+}
+
+// v1: STANDARD-only, no DST transitions modeled — see issue #5 for the tradeoff.
+function createVtimezoneLines(tzid: string): string[] {
+  const offset = resolveTimezoneOffset(tzid);
+  const tzname = resolveTimezoneShortName(tzid, offset);
+  const lines = [
+    'BEGIN:VTIMEZONE',
+    `TZID:${tzid}`,
+    'BEGIN:STANDARD',
+    'DTSTART:19700101T000000',
+    `TZOFFSETFROM:${offset}`,
+    `TZOFFSETTO:${offset}`,
+  ];
+  if (tzname) lines.push(`TZNAME:${tzname}`);
+  lines.push('END:STANDARD', 'END:VTIMEZONE');
+  return lines;
+}
+
+function resolveTimezoneOffset(tzid: string): string {
+  try {
+    const formatter = new Intl.DateTimeFormat('en-US', { timeZone: tzid, timeZoneName: 'longOffset' });
+    const part = formatter.formatToParts(new Date()).find((p) => p.type === 'timeZoneName');
+    return parseLongOffset(part?.value);
+  } catch {
+    return '+0000';
+  }
+}
+
+function parseLongOffset(longOffset: string | undefined): string {
+  if (!longOffset) return '+0000';
+  // "GMT" alone (UTC) or "GMT+09:00" / "GMT-05:30".
+  if (longOffset === 'GMT' || longOffset === 'UTC') return '+0000';
+  const match = /GMT([+-])(\d{1,2})(?::?(\d{2}))?/.exec(longOffset);
+  if (!match) return '+0000';
+  const sign = match[1];
+  const hours = match[2].padStart(2, '0');
+  const minutes = (match[3] ?? '00').padStart(2, '0');
+  return `${sign}${hours}${minutes}`;
+}
+
+// Common IANA → RFC 5545 TZNAME mapping. Intl's `short` formatter returns
+// GMT-style offsets for many zones (e.g. "GMT+9" for Asia/Seoul) which is not a
+// useful TZNAME, so we map a small set of well-known zones explicitly and fall
+// back to Intl / offset only when no entry matches.
+const STATIC_TZ_SHORT_NAMES: Record<string, string> = {
+  UTC: 'UTC',
+  'Etc/UTC': 'UTC',
+  'Asia/Seoul': 'KST',
+  'Asia/Tokyo': 'JST',
+};
+
+function resolveTimezoneShortName(tzid: string, offset: string): string | undefined {
+  const mapped = STATIC_TZ_SHORT_NAMES[tzid];
+  if (mapped) return mapped;
+  try {
+    const formatter = new Intl.DateTimeFormat('en-US', { timeZone: tzid, timeZoneName: 'short' });
+    const part = formatter.formatToParts(new Date()).find((p) => p.type === 'timeZoneName');
+    const value = part?.value;
+    if (!value) return undefined;
+    // Fall back when the short name is just another offset rendering (e.g. "GMT+9").
+    if (/^GMT([+-]\d|$)/.test(value) || /^UTC([+-]\d|$)/.test(value)) {
+      return value === 'GMT' || value === 'UTC' ? value : offset;
+    }
+    return value;
+  } catch {
+    return undefined;
+  }
 }
 
 function createIcsEventLines(event: NormalizedCalendarEvent, timestamp: string): string[] {
