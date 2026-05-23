@@ -11,19 +11,28 @@ jobs:
     permissions:
       pull-requests: write
     steps:
-      - uses: actions/checkout@v4
-
-      - name: Find plan files in PR
+      - name: Find added plan files
         id: find
-        run: |
-          files=$(git diff --name-only origin/${{ github.base_ref }}...HEAD -- 'docs/superpowers/plans/**' 2>/dev/null || \
-                  git diff --name-only ${{ github.event.pull_request.base.sha }}...${{ github.event.pull_request.head.sha }} -- 'docs/superpowers/plans/' )
-          echo "files<<EOF" >> $GITHUB_OUTPUT
-          echo "$files" >> $GITHUB_OUTPUT
-          echo "EOF" >> $GITHUB_OUTPUT
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const files = await github.paginate(github.rest.pulls.listFiles, {
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: context.issue.number,
+              per_page: 100,
+            });
+            const planFiles = files
+              .filter(f =>
+                f.filename.startsWith('docs/superpowers/plans/') &&
+                f.status !== 'removed'
+              )
+              .map(f => f.filename);
+            core.setOutput('found', planFiles.length > 0 ? 'true' : 'false');
+            core.setOutput('files', planFiles.join('\n'));
 
       - name: Comment on PR
-        if: steps.find.outputs.files != ''
+        if: steps.find.outputs.found == 'true'
         uses: actions/github-script@v7
         with:
           script: |
@@ -33,5 +42,14 @@ jobs:
               owner: context.repo.owner,
               repo: context.repo.repo,
               issue_number: context.issue.number,
-              body: `## ⚠️ 구현 계획 파일이 포함되어 있습니다\n\n다음 파일은 \`docs/superpowers/plans/\` 아래에 있는 구현 계획 파일입니다. 구현이 완료된 경우 PR 머지 전에 삭제해 주세요.\n\n${list}\n\n> 이 파일들은 작업 중 참고용 문서이며, main 브랜치에 유지할 필요가 없습니다.`
+              body: [
+                '## ⚠️ 구현 계획 파일이 포함되어 있습니다',
+                '',
+                `다음 파일은 \`docs/superpowers/plans/\` 아래에 있는 구현 계획 파일입니다.`,
+                '구현이 완료된 경우 PR 머지 전에 삭제해 주세요.',
+                '',
+                list,
+                '',
+                '> 이 파일들은 작업 중 참고용 문서이며, main 브랜치에 유지할 필요가 없습니다.',
+              ].join('\n')
             });
