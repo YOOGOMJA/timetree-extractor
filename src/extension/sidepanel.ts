@@ -9,6 +9,7 @@ import type {
   FetchLabelsResponse,
 } from './message-protocol.js';
 import { escapeHtml, toIsoDate, errorMessage } from './sidepanel-utils.js';
+import { parseDateRange } from './sidepanel-export-policy.js';
 
 async function sendToContentScript<T>(request: ExtensionRequest): Promise<T> {
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
@@ -41,11 +42,7 @@ function showError(message: string): void {
 function getDateRangeMs(): { fromMs: number; toMs: number } | null {
   const fromVal = (document.getElementById('date-from') as HTMLInputElement).value;
   const toVal = (document.getElementById('date-to') as HTMLInputElement).value;
-  if (!fromVal || !toVal) return null;
-  const fromMs = new Date(`${fromVal}T00:00:00`).getTime();
-  const toMs = new Date(`${toVal}T00:00:00`).getTime() + 86_400_000 - 1;
-  if (isNaN(fromMs) || isNaN(toMs) || fromMs > toMs) return null;
-  return { fromMs, toMs };
+  return parseDateRange(fromVal, toVal);
 }
 
 function formatEventDate(event: NormalizedCalendarEvent): string {
