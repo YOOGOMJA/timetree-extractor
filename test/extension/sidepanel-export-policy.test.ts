@@ -1,6 +1,11 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { parseDateRange, filterEventsByRange, aggregateWarnings } from '../../src/extension/sidepanel-export-policy.js';
+import {
+  parseDateRange,
+  filterEventsByRange,
+  aggregateWarnings,
+  decideExport,
+} from '../../src/extension/sidepanel-export-policy.js';
 import type { NormalizedCalendarEvent } from '../../src/core/normalize.js';
 
 test('parseDateRange: from이 빈 문자열이면 null', () => {
@@ -99,4 +104,69 @@ test('aggregateWarnings: 여러 종류 warning을 각각 count', () => {
     'timezone-missing': 1,
     'title-empty': 2,
   });
+});
+
+test('decideExport: consent가 false면 차단된다', () => {
+  const ev = makeEvent({});
+  const result = decideExport({
+    consent: false,
+    events: [ev],
+    format: 'ics',
+    now: new Date('2026-05-23T12:00:00'),
+  });
+  assert.deepEqual(result, { allowed: false, reason: 'no-consent' });
+});
+
+test('decideExport: events가 비어있으면 차단된다', () => {
+  const result = decideExport({
+    consent: true,
+    events: [],
+    format: 'ics',
+    now: new Date('2026-05-23T12:00:00'),
+  });
+  assert.deepEqual(result, { allowed: false, reason: 'empty-events' });
+});
+
+test('decideExport: ics 포맷은 BEGIN:VCALENDAR로 시작하는 content를 반환한다', () => {
+  const ev = makeEvent({ startMs: new Date('2026-05-23T10:00:00').getTime() });
+  const result = decideExport({
+    consent: true,
+    events: [ev],
+    format: 'ics',
+    now: new Date('2026-05-23T12:00:00'),
+  });
+  assert.equal(result.allowed, true);
+  if (!result.allowed) return;
+  assert.match(result.content, /^BEGIN:VCALENDAR/);
+  assert.equal(result.mimeType, 'text/calendar;charset=utf-8');
+  assert.equal(result.filename, 'timetree-export-2026-05-23.ics');
+});
+
+test('decideExport: json 포맷은 valid JSON을 반환한다', () => {
+  const ev = makeEvent({ startMs: new Date('2026-05-23T10:00:00').getTime() });
+  const result = decideExport({
+    consent: true,
+    events: [ev],
+    format: 'json',
+    now: new Date('2026-05-23T12:00:00'),
+  });
+  assert.equal(result.allowed, true);
+  if (!result.allowed) return;
+  const parsed = JSON.parse(result.content) as unknown[];
+  assert.equal(parsed.length, 1);
+  assert.equal(result.mimeType, 'application/json');
+  assert.equal(result.filename, 'timetree-export-2026-05-23.json');
+});
+
+test('decideExport: filename에 now의 날짜가 포함된다', () => {
+  const ev = makeEvent({});
+  const result = decideExport({
+    consent: true,
+    events: [ev],
+    format: 'ics',
+    now: new Date('2027-12-31T23:59:59'),
+  });
+  assert.equal(result.allowed, true);
+  if (!result.allowed) return;
+  assert.equal(result.filename, 'timetree-export-2027-12-31.ics');
 });

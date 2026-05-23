@@ -1,4 +1,6 @@
 import type { NormalizedCalendarEvent } from '../core/normalize.js';
+import { createIcsCalendar } from '../core/ics.js';
+import { toIsoDate } from './sidepanel-utils.js';
 
 export function parseDateRange(
   fromStr: string,
@@ -37,4 +39,43 @@ export function aggregateWarnings(
     }
   }
   return counts;
+}
+
+export type ExportDecision =
+  | {
+      allowed: true;
+      content: string;
+      filename: string;
+      mimeType: string;
+    }
+  | {
+      allowed: false;
+      reason: 'no-consent' | 'empty-events';
+    };
+
+export function decideExport(input: {
+  consent: boolean;
+  events: NormalizedCalendarEvent[];
+  format: 'ics' | 'json';
+  now: Date;
+}): ExportDecision {
+  if (!input.consent) return { allowed: false, reason: 'no-consent' };
+  if (input.events.length === 0) return { allowed: false, reason: 'empty-events' };
+
+  const dateStr = toIsoDate(input.now);
+  if (input.format === 'ics') {
+    return {
+      allowed: true,
+      content: createIcsCalendar(input.events, { now: input.now }),
+      filename: `timetree-export-${dateStr}.ics`,
+      mimeType: 'text/calendar;charset=utf-8',
+    };
+  }
+
+  return {
+    allowed: true,
+    content: JSON.stringify(input.events, null, 2),
+    filename: `timetree-export-${dateStr}.json`,
+    mimeType: 'application/json',
+  };
 }

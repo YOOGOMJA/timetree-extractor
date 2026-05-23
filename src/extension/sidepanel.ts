@@ -1,5 +1,4 @@
 import { normalizeRawTimeTreeEvent } from '../core/normalize.js';
-import { createIcsCalendar } from '../core/ics.js';
 import type { RawTimeTreeCalendar, RawTimeTreeEvent, RawTimeTreeLabel } from '../core/contracts.js';
 import type { NormalizedCalendarEvent } from '../core/normalize.js';
 import type {
@@ -9,7 +8,12 @@ import type {
   FetchLabelsResponse,
 } from './message-protocol.js';
 import { escapeHtml, toIsoDate, errorMessage } from './sidepanel-utils.js';
-import { parseDateRange, filterEventsByRange, aggregateWarnings } from './sidepanel-export-policy.js';
+import {
+  parseDateRange,
+  filterEventsByRange,
+  aggregateWarnings,
+  decideExport,
+} from './sidepanel-export-policy.js';
 
 async function sendToContentScript<T>(request: ExtensionRequest): Promise<T> {
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
@@ -247,21 +251,24 @@ async function analyzeEvents(): Promise<void> {
 }
 
 function exportEvents(): void {
-  if (lastNormalized.length === 0) {
-    showError('내보낼 이벤트가 없습니다');
+  // TODO(Task 7): 모달에서 consent를 받아 전달. 현재는 임시로 true 하드코딩.
+  const decision = decideExport({
+    consent: true,
+    events: lastNormalized,
+    format: getSelectedFormat(),
+    now: new Date(),
+  });
+
+  if (!decision.allowed) {
+    if (decision.reason === 'empty-events') {
+      showError('내보낼 이벤트가 없습니다');
+    } else {
+      showError('공유 캘린더 경고에 동의해야 내보낼 수 있습니다');
+    }
     return;
   }
-  const format = getSelectedFormat();
-  const now = new Date();
-  const dateStr = toIsoDate(now);
 
-  if (format === 'ics') {
-    const ics = createIcsCalendar(lastNormalized, { now });
-    downloadFile(ics, `timetree-export-${dateStr}.ics`, 'text/calendar;charset=utf-8');
-  } else {
-    const json = JSON.stringify(lastNormalized, null, 2);
-    downloadFile(json, `timetree-export-${dateStr}.json`, 'application/json');
-  }
+  downloadFile(decision.content, decision.filename, decision.mimeType);
 }
 
 document.addEventListener('DOMContentLoaded', async () => {
