@@ -2,7 +2,7 @@
 
 결론: Google Calendar의 **파일 import**(Settings → Import & export → Import) 경로는 RFC 5545 `VEVENT`를 읽지만, **honor하는 field가 제한적이고 일부는 조용히 버리거나 파일 전체 import를 깨뜨린다.** 시간/제목/설명/위치/반복은 안정적으로 들어가지만 `CATEGORIES`·`URL`·`CONFERENCE`·per-event color는 UI에 노출되지 않고, `VTIMEZONE` 블록은 무시되며(TZID 문자열을 자체 IANA DB로 재해석), `GEO`의 잘못된 값은 import 자체를 실패시킨다. Google은 file-import field 사양을 공식 문서로 공개하지 않으므로 아래 다수 항목은 **미검증(추론)** 이며 실제 import smoke로 승격이 필요하다.
 
-> 이 문서는 ICS → Google Calendar **import 파일 호환성**을 위한 외부 동작 조사 note다. Google Calendar API 연동/동기화가 아니라, 우리가 내보내는 `.ics` 파일이 Google import에서 어떻게 처리되는지를 다룬다. 이 조사에서 도출한 **확정 매핑 정책은 별도 spec으로 분리 예정**이다(issue #11 / PR #17 — `docs/specs/google-calendar-import-field-compat.md`, 머지 전까지 본 저장소에 없음). source-side 포함/제외 정책은 기존 `docs/specs/v1-export-policy.md`를 본다.
+> 이 문서는 ICS → Google Calendar **import 파일 호환성**을 위한 외부 동작 조사 note다. Google Calendar API 연동/동기화가 아니라, 우리가 내보내는 `.ics` 파일이 Google import에서 어떻게 처리되는지를 다룬다. 이 조사에서 도출한 **확정 매핑 정책은 `docs/specs/google-calendar-import-field-compat.md`**로 정리한다(issue #11). source-side 포함/제외 정책은 기존 `docs/specs/v1-export-policy.md`를 본다.
 
 ## 확인일
 
@@ -21,7 +21,8 @@
 - **VTIMEZONE 무시**: Google은 `VTIMEZONE` component를 신뢰하지 않고 `TZID` 문자열을 자체 IANA DB로 해석한다. 따라서 단일 STANDARD-only VTIMEZONE의 DST 한계는 **Google 한정으로는 무의미**하고, 진짜 위험은 **TZID이 IANA 이름이 아닐 때**(예: `KST`, Windows `"Korea Standard Time"`) → fallback으로 시간이 틀어짐.
 - **all-day DTEND는 exclusive**: 단일 날짜 all-day는 `DTEND = DTSTART + 1일`이어야 한다. inclusive로 넣으면 하루 길어지고, `DTEND=DTSTART`면 0일/이상 span.
 - **GEO 파손**: `GEO:null;null` 같은 잘못된 값은 **파일 전체 import를 실패**시킨다(generic "couldn't import"). 유효 좌표 없으면 **emit 금지**.
-- **파일 제약**: UTF-8 + CRLF + 75-octet folding 필요. Google은 Apple/Outlook보다 folding/CRLF에 **엄격**. 파일 크기 대략 ~1MB 한계, 수천 event는 timeout/실패 가능.
+
+(UTF-8/CRLF/75-octet folding 요구와 ~1MB 파일 크기 한계는 confidence가 med/med-high라 아래 매트릭스·"미검증" 목록에서 다룬다 — 확정 사실로 단정하지 않는다.)
 
 ## VEVENT property별 honor 매트릭스
 
