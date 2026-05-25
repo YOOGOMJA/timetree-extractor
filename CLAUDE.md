@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Local-first, research-grade Chrome MV3 extension that exports a user's TimeTree Web calendars to JSON / ICS. The repo is contract-first TypeScript: the runtime is small, but the field schema, normalization rules, and the network/observation boundary are treated as the product.
 
-`AGENTS.md` is the authoritative project guidance for tone, commit style (Conventional Commits + Lore trailers), and Korean-first writing. `docs/README.md` lists the canonical reading order for product/research/decision/spec context.
+`AGENTS.md` is the authoritative project guidance for tone, commit style (Conventional Commits + Lore trailers), and Korean-first writing. `docs/README.md` lists the canonical reading order for product, research, spec, decision, and architecture context.
 
 ## Commands
 
