@@ -188,9 +188,14 @@ function toUtcDate(epochMs: number): string {
 }
 
 // A timezone name is a valid IANA zone iff Intl can build a formatter for it.
-// Non-IANA names (e.g. `KST`, Windows `"Korea Standard Time"`) throw RangeError;
-// `UTC` is valid. `Intl` is standard ECMAScript, so this stays core-pure.
+// Non-IANA names (e.g. `KST`, Windows `"Korea Standard Time"`) throw RangeError.
+// But ECMA-402 ALSO accepts offset identifiers (`+09:00`, `GMT+9`), which are not
+// IANA zone names and which Google import does not reliably honor — reject those
+// explicitly so the warning fires on the path it is meant to catch. `UTC` is valid.
+// `Intl` is standard ECMAScript, so this stays core-pure.
 function isValidIanaTimezone(timezone: string): boolean {
+  if (/^[+-]\d{2}:?\d{2}$/.test(timezone)) return false;
+  if (/^(?:UTC|GMT)[+-]/i.test(timezone)) return false;
   try {
     new Intl.DateTimeFormat('en-US', { timeZone: timezone });
     return true;

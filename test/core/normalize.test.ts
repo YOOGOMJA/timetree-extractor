@@ -76,6 +76,17 @@ test('warns when a present timezone is not a valid IANA zone name', () => {
   assert.equal(result.value.warnings.includes('timezone-missing'), false);
 });
 
+test('warns for offset-style timezone identifiers that Intl accepts but are not IANA', () => {
+  for (const tz of ['+09:00', 'GMT+9', 'UTC+09:00']) {
+    const result = normalizeRawTimeTreeEvent(
+      { ...timedEventFixture, startTimezone: tz, endTimezone: tz },
+      { calendar: calendarFixture, labels: labelsFixture },
+    );
+    assert.equal(result.ok, true);
+    assert.equal(result.value.warnings.includes('timezone-not-iana'), true, `${tz} should warn`);
+  }
+});
+
 test('fails timed normalization when timezone is missing', () => {
   const result = normalizeRawTimeTreeEvent(missingTimezoneTimedEventFixture, {
     calendar: calendarFixture,

@@ -187,13 +187,15 @@ function formatDateTimeLine(name: 'DTSTART' | 'DTEND', value: NormalizedDateTime
   return `${name};TZID=${value.timezone}:${formatZonedDateTime(value.epochMs, value.timezone)}`;
 }
 
-// EXRULE is deprecated in RFC 5545 and Google ignores (or risks misreading) it,
-// so we do not emit it. The `recurrence-unsupported` warning recorded in
-// normalize.ts preserves the signal that an EXRULE was present in the source.
+// EXRULE is deprecated in RFC 5545 and Google import ignores it, but Apple/Outlook
+// honor it — dropping it would silently re-introduce excluded instances there. So we
+// preserve it (matching docs/specs/v1-export-policy.md); normalize.ts still records
+// the `recurrence-unsupported` warning for the source EXRULE.
 function formatRecurrenceLines(recurrence: NormalizedRecurrence): string[] {
   return [
     ...(recurrence.rrule ?? []).map((line) => formatRuleLine('RRULE', line)),
     ...(recurrence.rdate ?? []).map((line) => formatRuleLine('RDATE', line)),
+    ...(recurrence.exrule ?? []).map((line) => formatRuleLine('EXRULE', line)),
     ...(recurrence.exdate ?? []).map((line) => formatRuleLine('EXDATE', line)),
   ];
 }

@@ -303,10 +303,10 @@ test('emits no DESCRIPTION when there is no base description, labels, or URL', (
   assert.doesNotMatch(ics, /DESCRIPTION:/);
 });
 
-test('does not emit EXRULE while keeping RRULE, RDATE, and EXDATE (issue #12)', () => {
+test('emits EXRULE alongside RRULE, RDATE, and EXDATE (preserved for Apple/Outlook)', () => {
   const event = normalized({
     ...timedEventFixture,
-    id: 'event-exrule-dropped',
+    id: 'event-exrule-kept',
     recurrences: [
       'RRULE:FREQ=WEEKLY;BYDAY=MO',
       'RDATE;TZID="UTC";VALUE=DATE:20260905',
@@ -321,8 +321,8 @@ test('does not emit EXRULE while keeping RRULE, RDATE, and EXDATE (issue #12)', 
   });
 
   const unfolded = ics.replaceAll('\r\n ', '');
-  assert.doesNotMatch(unfolded, /EXRULE/);
   assert.match(unfolded, /RRULE:FREQ=WEEKLY;BYDAY=MO\r\n/);
   assert.match(unfolded, /RDATE;TZID="UTC";VALUE=DATE:20260905\r\n/);
+  assert.match(unfolded, /EXRULE:FREQ=WEEKLY;BYDAY=TU\r\n/);
   assert.match(unfolded, /EXDATE;TZID="UTC";VALUE=DATE:20260907\r\n/);
 });
