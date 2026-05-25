@@ -271,6 +271,7 @@ function openWarningModal(): Promise<boolean> {
       checkbox.removeEventListener('change', onChange);
       confirmBtn.removeEventListener('click', onConfirm);
       cancelBtn.removeEventListener('click', onCancel);
+      dialog.removeEventListener('cancel', onCancel);
       dialog.close();
     };
     const onConfirm = () => {
@@ -286,6 +287,9 @@ function openWarningModal(): Promise<boolean> {
     checkbox.addEventListener('change', onChange);
     confirmBtn.addEventListener('click', onConfirm);
     cancelBtn.addEventListener('click', onCancel);
+    // <dialog>는 Esc로도 닫히며 이때 cancel 이벤트만 발생한다. 핸들러가 없으면
+    // promise가 pending으로 남아 리스너가 누수되고 다음 export에서 중복 호출된다.
+    dialog.addEventListener('cancel', onCancel);
     dialog.showModal();
   });
 }
