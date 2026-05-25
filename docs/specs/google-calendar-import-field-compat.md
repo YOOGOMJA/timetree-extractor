@@ -20,11 +20,11 @@
 - 동시에 같은 정보를 `DESCRIPTION` 본문에 mirror한다: 라벨은 `라벨:` line, 링크는 `링크:` line.
 - 이유: Google import는 `CATEGORIES`/`URL`을 UI에 노출하지 않고 drop한다. mirror는 **추가(additive)**이며 기존 property 제거가 아니다 — standards client와 Google import 둘 다에서 정보가 살아남는다.
 
-### `EXRULE` — emit 중단
+### `EXRULE` — 유지 (Google은 무시)
 
-- `EXRULE` line은 더 이상 출력하지 않는다.
-- 이유: `EXRULE`은 RFC 5545에서 deprecated이고, Google은 이를 무시하거나 import를 불안정하게 만들 수 있다.
-- `recurrence-unsupported` warning은 그대로 유지한다 — `EXRULE`을 포함한 unsupported recurrence는 silent drop이 아니라 warning으로 남긴다.
+- `EXRULE` line은 그대로 **출력한다** (`docs/specs/v1-export-policy.md`의 "보존" 정책과 정합).
+- 이유: `EXRULE`은 RFC 5545에서 deprecated이고 Google import는 이를 **무시**하지만(파손은 아님), Apple/Outlook 등은 honor한다. emit을 빼면 그 client들에서 제외되었던 instance가 다시 나타나는 data-loss가 발생하므로 제거하지 않는다. (additive 원칙 — Google 위해 다른 client를 깨지 않는다.)
+- `recurrence-unsupported` warning은 그대로 유지한다 — `EXRULE`을 포함한 unsupported recurrence는 silent가 아니라 warning으로 남긴다.
 
 ### all-day 날짜 — timezone-stable `VALUE=DATE`
 
@@ -69,7 +69,7 @@
 | `allDay=false` | `start/end.kind='date-time'` | `DTSTART;TZID=`, `DTEND;TZID=` | emit (IANA `TZID` 필수, 아니면 `timezone-not-iana`) |
 | `startTimezone`/`endTimezone` | `timezone` | `TZID` parameter | remap (IANA 검증) |
 | `recurrences` (`RRULE`/`RDATE`/`EXDATE`) | `recurrence` | `RRULE`/`RDATE`/`EXDATE` | emit (supported subset만) |
-| `recurrences` (`EXRULE`) | `recurrence.exrule` | — | drop (emit 중단, `recurrence-unsupported` 유지) |
+| `recurrences` (`EXRULE`) | `recurrence.exrule` | `EXRULE` | emit (Google은 무시, Apple/Outlook 위해 보존, `recurrence-unsupported` 유지) |
 | `alerts` | (계획) | `VALARM` | 계획됨 (#13) |
 | `recurringUuid` | (계획) | `RECURRENCE-ID` | 계획됨 (#14) |
 | `attendees` | warning만 | — | drop (`participant-omitted`) |
