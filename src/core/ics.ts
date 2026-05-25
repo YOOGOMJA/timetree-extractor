@@ -154,7 +154,8 @@ function createIcsEventLines(event: NormalizedCalendarEvent, timestamp: string):
     formatDateTimeLine('DTEND', event.end),
   ];
 
-  if (event.description) lines.push(`DESCRIPTION:${escapeText(event.description)}`);
+  const description = composeDescription(event);
+  if (description) lines.push(`DESCRIPTION:${escapeText(description)}`);
   if (event.location) lines.push(`LOCATION:${escapeText(event.location)}`);
   if (event.url) lines.push(`URL:${event.url}`);
   if (event.labels && event.labels.length > 0) lines.push(`CATEGORIES:${event.labels.map(escapeText).join(',')}`);
@@ -164,16 +165,35 @@ function createIcsEventLines(event: NormalizedCalendarEvent, timestamp: string):
   return lines;
 }
 
+// Policy choice (issue #12): Google Calendar's file import silently drops
+// CATEGORIES and the URL property, so labels/links are invisible to Google
+// users. We KEEP the standards-compliant CATEGORIES:/URL: lines (Apple/Outlook
+// honor them) AND ALSO mirror that info into DESCRIPTION so it is visible
+// everywhere. This is an additive "keep + mirror" decision — a reviewer who
+// prefers a leaner DESCRIPTION can drop the mirroring here.
+function composeDescription(event: NormalizedCalendarEvent): string {
+  const base = event.description ?? '';
+  const extra: string[] = [];
+  if (event.labels && event.labels.length > 0) extra.push(`라벨: ${event.labels.join(', ')}`);
+  if (event.url) extra.push(`링크: ${event.url}`);
+
+  if (extra.length === 0) return base;
+  if (base === '') return extra.join('\n');
+  return `${base}\n\n${extra.join('\n')}`;
+}
+
 function formatDateTimeLine(name: 'DTSTART' | 'DTEND', value: NormalizedDateTime): string {
   if (value.kind === 'date') return `${name};VALUE=DATE:${value.date.replaceAll('-', '')}`;
   return `${name};TZID=${value.timezone}:${formatZonedDateTime(value.epochMs, value.timezone)}`;
 }
 
+// EXRULE is deprecated in RFC 5545 and Google ignores (or risks misreading) it,
+// so we do not emit it. The `recurrence-unsupported` warning recorded in
+// normalize.ts preserves the signal that an EXRULE was present in the source.
 function formatRecurrenceLines(recurrence: NormalizedRecurrence): string[] {
   return [
     ...(recurrence.rrule ?? []).map((line) => formatRuleLine('RRULE', line)),
     ...(recurrence.rdate ?? []).map((line) => formatRuleLine('RDATE', line)),
-    ...(recurrence.exrule ?? []).map((line) => formatRuleLine('EXRULE', line)),
     ...(recurrence.exdate ?? []).map((line) => formatRuleLine('EXDATE', line)),
   ];
 }
