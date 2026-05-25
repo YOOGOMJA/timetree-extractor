@@ -27,6 +27,14 @@
     .radio-group label { display: flex; align-items: center; gap: 6px; margin: 0; }
     .error-box { background: #fef2f2; border: 1px solid #fca5a5; border-radius: 6px; padding: 12px; color: #dc2626; font-size: 13px; }
     .spinner { color: #6b7280; }
+    dialog#warning-modal { border: 1px solid #d1d5db; border-radius: 8px; padding: 0; max-width: 360px; }
+    dialog#warning-modal::backdrop { background: rgba(0,0,0,0.4); }
+    .modal-header { padding: 12px 16px; border-bottom: 1px solid #e5e7eb; font-weight: 600; font-size: 14px; }
+    .modal-body { padding: 16px; font-size: 13px; line-height: 1.5; color: #374151; }
+    .modal-body p { margin-bottom: 12px; }
+    .modal-consent { display: flex; align-items: flex-start; gap: 8px; margin-top: 12px; padding: 8px; background: #fef3c7; border-radius: 4px; }
+    .modal-consent input { margin-top: 2px; }
+    .modal-footer { padding: 12px 16px; border-top: 1px solid #e5e7eb; display: flex; justify-content: flex-end; gap: 8px; }
     [hidden] { display: none !important; }
   </style>
 </head>
@@ -92,6 +100,23 @@
     </div>
 
   </div>
+
+  <dialog id="warning-modal">
+    <div class="modal-header">공유 캘린더 경고</div>
+    <div class="modal-body">
+      <p>이 도구는 공식 TimeTree export 기능이 아닙니다. 현재 로그인된 browser session에서 사용자가 접근 가능한 calendar data를 local file로 저장합니다.</p>
+      <p>Shared calendar에는 다른 참가자의 이름, 일정, memo, comment, image 등 personal information이 포함될 수 있습니다.</p>
+      <p>Export file은 사용자의 책임으로 보관해야 하며, 외부로 전송하지 않습니다.</p>
+      <label class="modal-consent">
+        <input type="checkbox" id="warning-consent">
+        <span>위 내용을 확인했으며, 책임지고 보관하겠습니다.</span>
+      </label>
+    </div>
+    <div class="modal-footer">
+      <button id="btn-warning-cancel" class="btn-secondary">취소</button>
+      <button id="btn-warning-confirm" class="btn-primary" disabled>내보내기 확정</button>
+    </div>
+  </dialog>
 
   <script type="module" src="dist/src/extension/sidepanel.js"></script>
 </body>

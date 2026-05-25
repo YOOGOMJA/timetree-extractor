@@ -1,5 +1,4 @@
 import { normalizeRawTimeTreeEvent } from '../core/normalize.js';
-import { createIcsCalendar } from '../core/ics.js';
 import type { RawTimeTreeCalendar, RawTimeTreeEvent, RawTimeTreeLabel } from '../core/contracts.js';
 import type { NormalizedCalendarEvent } from '../core/normalize.js';
 import type {
@@ -9,6 +8,12 @@ import type {
   FetchLabelsResponse,
 } from './message-protocol.js';
 import { escapeHtml, toIsoDate, errorMessage } from './sidepanel-utils.js';
+import {
+  parseDateRange,
+  filterEventsByRange,
+  aggregateWarnings,
+  decideExport,
+} from './sidepanel-export-policy.js';
 
 async function sendToContentScript<T>(request: ExtensionRequest): Promise<T> {
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
@@ -41,11 +46,7 @@ function showError(message: string): void {
 function getDateRangeMs(): { fromMs: number; toMs: number } | null {
   const fromVal = (document.getElementById('date-from') as HTMLInputElement).value;
   const toVal = (document.getElementById('date-to') as HTMLInputElement).value;
-  if (!fromVal || !toVal) return null;
-  const fromMs = new Date(`${fromVal}T00:00:00`).getTime();
-  const toMs = new Date(`${toVal}T00:00:00`).getTime() + 86_400_000 - 1;
-  if (isNaN(fromMs) || isNaN(toMs) || fromMs > toMs) return null;
-  return { fromMs, toMs };
+  return parseDateRange(fromVal, toVal);
 }
 
 function formatEventDate(event: NormalizedCalendarEvent): string {
@@ -92,12 +93,7 @@ function renderResults(
   totalFetched: number,
 ): void {
   const statsEl = document.getElementById('analysis-stats')!;
-  const warningCounts: Record<string, number> = {};
-  for (const ev of events) {
-    for (const w of ev.warnings) {
-      warningCounts[w] = (warningCounts[w] ?? 0) + 1;
-    }
-  }
+  const warningCounts = aggregateWarnings(events);
   statsEl.innerHTML = `
     <div class="stat-row"><span>전체 fetch</span><span>${totalFetched}건</span></div>
     <div class="stat-row"><span>기간 내 이벤트</span><span>${events.length}건</span></div>
@@ -231,7 +227,7 @@ async function analyzeEvents(): Promise<void> {
 
   lastTotalFetched = allRaw.length;
 
-  const normalized: NormalizedCalendarEvent[] = [];
+  const normalizedAll: NormalizedCalendarEvent[] = [];
   const calendarMap = new Map(loadedCalendars.map((c) => [c.id, c]));
   for (const raw of allRaw) {
     if (raw.deactivatedAt != null) continue;
@@ -240,16 +236,10 @@ async function analyzeEvents(): Promise<void> {
       labels: labelMap.get(raw.calendarId) ?? [],
     });
     if (!result.ok) continue;
-    const ev = result.value;
-    const startMs =
-      ev.start.kind === 'date-time'
-        ? ev.start.epochMs
-        : new Date(ev.start.date + 'T00:00:00').getTime();
-    if (startMs >= range.fromMs && startMs <= range.toMs) {
-      normalized.push(ev);
-    }
+    normalizedAll.push(result.value);
   }
 
+  const normalized = filterEventsByRange(normalizedAll, range);
   normalized.sort((a, b) => {
     const aMs = a.start.kind === 'date-time' ? a.start.epochMs : new Date(`${a.start.date}T00:00:00`).getTime();
     const bMs = b.start.kind === 'date-time' ? b.start.epochMs : new Date(`${b.start.date}T00:00:00`).getTime();
@@ -260,22 +250,74 @@ async function analyzeEvents(): Promise<void> {
   renderResults(normalized, lastTotalFetched);
 }
 
-function exportEvents(): void {
+function openWarningModal(): Promise<boolean> {
+  return new Promise((resolve) => {
+    const dialog = document.getElementById('warning-modal') as HTMLDialogElement | null;
+    const checkbox = document.getElementById('warning-consent') as HTMLInputElement | null;
+    const confirmBtn = document.getElementById('btn-warning-confirm') as HTMLButtonElement | null;
+    const cancelBtn = document.getElementById('btn-warning-cancel') as HTMLButtonElement | null;
+    if (!dialog || !checkbox || !confirmBtn || !cancelBtn) {
+      resolve(false);
+      return;
+    }
+
+    checkbox.checked = false;
+    confirmBtn.disabled = true;
+
+    const onChange = () => {
+      confirmBtn.disabled = !checkbox.checked;
+    };
+    const cleanup = () => {
+      checkbox.removeEventListener('change', onChange);
+      confirmBtn.removeEventListener('click', onConfirm);
+      cancelBtn.removeEventListener('click', onCancel);
+      dialog.removeEventListener('cancel', onCancel);
+      dialog.close();
+    };
+    const onConfirm = () => {
+      const consented = checkbox.checked;
+      cleanup();
+      resolve(consented);
+    };
+    const onCancel = () => {
+      cleanup();
+      resolve(false);
+    };
+
+    checkbox.addEventListener('change', onChange);
+    confirmBtn.addEventListener('click', onConfirm);
+    cancelBtn.addEventListener('click', onCancel);
+    // <dialog>는 Esc로도 닫히며 이때 cancel 이벤트만 발생한다. 핸들러가 없으면
+    // promise가 pending으로 남아 리스너가 누수되고 다음 export에서 중복 호출된다.
+    dialog.addEventListener('cancel', onCancel);
+    dialog.showModal();
+  });
+}
+
+async function exportEvents(): Promise<void> {
   if (lastNormalized.length === 0) {
     showError('내보낼 이벤트가 없습니다');
     return;
   }
-  const format = getSelectedFormat();
-  const now = new Date();
-  const dateStr = toIsoDate(now);
 
-  if (format === 'ics') {
-    const ics = createIcsCalendar(lastNormalized, { now });
-    downloadFile(ics, `timetree-export-${dateStr}.ics`, 'text/calendar;charset=utf-8');
-  } else {
-    const json = JSON.stringify(lastNormalized, null, 2);
-    downloadFile(json, `timetree-export-${dateStr}.json`, 'application/json');
+  const consent = await openWarningModal();
+
+  const decision = decideExport({
+    consent,
+    events: lastNormalized,
+    format: getSelectedFormat(),
+    now: new Date(),
+  });
+
+  if (!decision.allowed) {
+    if (decision.reason === 'no-consent') {
+      return; // 사용자가 동의하지 않음 — 조용히 종료
+    }
+    showError('내보낼 이벤트가 없습니다');
+    return;
   }
+
+  downloadFile(decision.content, decision.filename, decision.mimeType);
 }
 
 document.addEventListener('DOMContentLoaded', async () => {
