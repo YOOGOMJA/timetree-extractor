@@ -43,6 +43,39 @@ test('normalizes an all-day event to date-only boundaries', () => {
   assert.deepEqual(result.value.end, { kind: 'date', date: '2026-05-06' });
 });
 
+test('derives all-day boundaries from UTC components so the date is timezone-stable', () => {
+  // TimeTree all-day epochs are UTC-midnight; the emitted VALUE=DATE must not
+  // shift by a day based on the export machine timezone (off-by-one regression).
+  const result = normalizeRawTimeTreeEvent(
+    { ...allDayEventFixture, id: 'event-all-day-utc-stable', endAt: Date.UTC(2026, 4, 6, 0, 0, 0) },
+    { calendar: calendarFixture, labels: labelsFixture },
+  );
+
+  assert.equal(result.ok, true);
+  assert.deepEqual(result.value.end, { kind: 'date', date: '2026-05-06' });
+});
+
+test('does not warn about timezone validity for a valid IANA zone', () => {
+  const result = normalizeRawTimeTreeEvent(
+    { ...timedEventFixture, startTimezone: 'Asia/Seoul', endTimezone: 'Asia/Seoul' },
+    { calendar: calendarFixture, labels: labelsFixture },
+  );
+
+  assert.equal(result.ok, true);
+  assert.equal(result.value.warnings.includes('timezone-not-iana'), false);
+});
+
+test('warns when a present timezone is not a valid IANA zone name', () => {
+  const result = normalizeRawTimeTreeEvent(
+    { ...timedEventFixture, startTimezone: 'KST', endTimezone: 'KST' },
+    { calendar: calendarFixture, labels: labelsFixture },
+  );
+
+  assert.equal(result.ok, true);
+  assert.equal(result.value.warnings.includes('timezone-not-iana'), true);
+  assert.equal(result.value.warnings.includes('timezone-missing'), false);
+});
+
 test('fails timed normalization when timezone is missing', () => {
   const result = normalizeRawTimeTreeEvent(missingTimezoneTimedEventFixture, {
     calendar: calendarFixture,

@@ -2,6 +2,7 @@ import { validateRawTimeTreeEvent, type RawTimeTreeCalendar, type RawTimeTreeEve
 
 export const NORMALIZATION_WARNING_VALUES = [
   'timezone-missing',
+  'timezone-not-iana',
   'recurrence-unsupported',
   'attachment-omitted',
   'comment-omitted',
@@ -91,12 +92,12 @@ export function normalizeRawTimeTreeEvent(rawEvent: unknown, context: Normalizat
 }
 
 function normalizeStart(event: RawTimeTreeEvent): NormalizedDateTime {
-  if (event.allDay) return { kind: 'date', date: toLocalDate(event.startAt) };
+  if (event.allDay) return { kind: 'date', date: toUtcDate(event.startAt) };
   return { kind: 'date-time', epochMs: event.startAt, timezone: event.startTimezone as string };
 }
 
 function normalizeEnd(event: RawTimeTreeEvent): NormalizedDateTime {
-  if (event.allDay) return { kind: 'date', date: toLocalDate(event.endAt) };
+  if (event.allDay) return { kind: 'date', date: toUtcDate(event.endAt) };
   return { kind: 'date-time', epochMs: event.endAt, timezone: event.endTimezone as string };
 }
 
@@ -110,6 +111,11 @@ function collectWarnings(event: RawTimeTreeEvent): NormalizationWarning[] {
   const warnings: NormalizationWarning[] = [];
   if (!event.allDay && (!event.startTimezone || !event.endTimezone)) {
     warnings.push('timezone-missing');
+  }
+  if (!event.allDay) {
+    for (const tz of [event.startTimezone, event.endTimezone]) {
+      if (tz && !isValidIanaTimezone(tz)) warnings.push('timezone-not-iana');
+    }
   }
   if (Array.isArray(event.attendees) && event.attendees.length > 0) {
     warnings.push('participant-omitted');
@@ -169,12 +175,28 @@ function push(target: NormalizedRecurrence, key: keyof NormalizedRecurrence, val
   target[key].push(value);
 }
 
-function toLocalDate(epochMs: number): string {
+// TimeTree all-day timestamps are UTC-midnight epochs. Deriving the date from
+// UTC components (not local components) keeps the emitted VALUE=DATE boundary
+// timezone-stable, so an export run on a non-UTC machine cannot shift the date
+// by a day (which previously collapsed DTEND onto DTSTART).
+function toUtcDate(epochMs: number): string {
   const d = new Date(epochMs);
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, '0');
-  const day = String(d.getDate()).padStart(2, '0');
+  const y = d.getUTCFullYear();
+  const m = String(d.getUTCMonth() + 1).padStart(2, '0');
+  const day = String(d.getUTCDate()).padStart(2, '0');
   return `${y}-${m}-${day}`;
+}
+
+// A timezone name is a valid IANA zone iff Intl can build a formatter for it.
+// Non-IANA names (e.g. `KST`, Windows `"Korea Standard Time"`) throw RangeError;
+// `UTC` is valid. `Intl` is standard ECMAScript, so this stays core-pure.
+function isValidIanaTimezone(timezone: string): boolean {
+  try {
+    new Intl.DateTimeFormat('en-US', { timeZone: timezone });
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 function unique<T>(values: T[]): T[] {
