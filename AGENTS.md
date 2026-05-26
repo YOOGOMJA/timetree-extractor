@@ -23,7 +23,7 @@
 - Treat Notion documents for `TimeTree Backup Exporter`, `TimeTree Web 데이터 표면 조사`, and `v1은 개인용 로컬 백업 도구로 제한한다` as product context, not as implementation proof.
 - Before building extraction features, verify the TimeTree Web data surface and document which fields are actually accessible.
 - Codex/OMX should use `AGENTS.md` as the primary instruction surface and `docs/` as the durable project knowledge base.
-- Read `docs/README.md` first, then follow its reading order for product, research, decision, and architecture context.
+- Read `docs/README.md` first, then follow its reading order for product, research, spec, decision, and architecture context.
 
 <!-- AUTONOMY DIRECTIVE — DO NOT REMOVE -->
 YOU ARE AN AUTONOMOUS CODING AGENT. EXECUTE TASKS TO COMPLETION WITHOUT ASKING FOR PERMISSION.
