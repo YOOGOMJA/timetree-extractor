@@ -38,6 +38,7 @@ type NormalizedRecurrence = {
 
 type NormalizationWarning =
   | 'timezone-missing'
+  | 'timezone-not-iana'
   | 'recurrence-unsupported'
   | 'attachment-omitted'
   | 'comment-omitted'

@@ -25,7 +25,10 @@ test('writes a timed event with TZID based DTSTART and DTEND', () => {
   assert.match(ics, /DTSTART;TZID=Asia\/Seoul:20260505T100000\r\n/);
   assert.match(ics, /DTEND;TZID=Asia\/Seoul:20260505T110000\r\n/);
   assert.match(ics, /LOCATION:Synthetic location\r\n/);
-  assert.match(ics, /DESCRIPTION:Synthetic note\r\n/);
+  // DESCRIPTION now mirrors labels/URL additively (issue #12); CATEGORIES/URL stay too.
+  const unfolded = ics.replaceAll('\r\n ', '');
+  assert.match(unfolded, /DESCRIPTION:Synthetic note\\n\\n라벨: Family\\n링크: https:\/\/example.test\/event\r\n/);
+  assert.match(ics, /CATEGORIES:Family\r\n/);
   assert.match(ics, /URL:https:\/\/example.test\/event\r\n/);
   assert.match(ics, /END:VCALENDAR\r\n$/);
 });
@@ -125,7 +128,8 @@ test('escapes ICS text values', () => {
   });
 
   assert.match(ics, /SUMMARY:Comma\\, semicolon\\; slash\\\\ newline\\ntext\r\n/);
-  assert.match(ics, /DESCRIPTION:Line 1\\nLine 2\r\n/);
+  const unfolded = ics.replaceAll('\r\n ', '');
+  assert.match(unfolded, /DESCRIPTION:Line 1\\nLine 2\\n\\n라벨: Family\\n링크: https:\/\/example.test\/event\r\n/);
 });
 
 test('emits a VTIMEZONE block for Asia/Seoul when a timed event uses it', () => {
@@ -248,4 +252,77 @@ test('emits two VTIMEZONE blocks for a mixed Asia/Seoul + UTC calendar', () => {
   const unfolded = ics.replaceAll('\r\n ', '');
   assert.match(unfolded, /TZID:Asia\/Seoul\r\n/);
   assert.match(unfolded, /TZID:UTC\r\n/);
+});
+
+test('mirrors labels and URL into DESCRIPTION while keeping CATEGORIES and URL lines (issue #12)', () => {
+  const event = normalized({
+    ...timedEventFixture,
+    id: 'event-description-mirror-1',
+    note: '기본 설명',
+  });
+
+  const ics = createIcsCalendar([event], {
+    now: new Date(Date.UTC(2026, 0, 1, 0, 0, 0)),
+  });
+
+  const unfolded = ics.replaceAll('\r\n ', '');
+  assert.match(unfolded, /DESCRIPTION:기본 설명\\n\\n라벨: Family\\n링크: https:\/\/example.test\/event\r\n/);
+  // Additive policy: standards-compliant CATEGORIES/URL properties stay too.
+  assert.match(ics, /CATEGORIES:Family\r\n/);
+  assert.match(ics, /URL:https:\/\/example.test\/event\r\n/);
+});
+
+test('composes DESCRIPTION from labels and URL even when there is no base description', () => {
+  const event = normalized({
+    ...timedEventFixture,
+    id: 'event-description-mirror-no-base',
+    note: '',
+  });
+
+  const ics = createIcsCalendar([event], {
+    now: new Date(Date.UTC(2026, 0, 1, 0, 0, 0)),
+  });
+
+  const unfolded = ics.replaceAll('\r\n ', '');
+  assert.match(unfolded, /DESCRIPTION:라벨: Family\\n링크: https:\/\/example.test\/event\r\n/);
+});
+
+test('emits no DESCRIPTION when there is no base description, labels, or URL', () => {
+  const event = normalized({
+    ...timedEventFixture,
+    id: 'event-description-empty',
+    note: '',
+    url: undefined,
+    labelId: null,
+  });
+
+  const ics = createIcsCalendar([event], {
+    now: new Date(Date.UTC(2026, 0, 1, 0, 0, 0)),
+  });
+
+  assert.doesNotMatch(ics, /DESCRIPTION:/);
+});
+
+test('emits EXRULE alongside RRULE, RDATE, and EXDATE (preserved for Apple/Outlook)', () => {
+  const event = normalized({
+    ...timedEventFixture,
+    id: 'event-exrule-kept',
+    recurrences: [
+      'RRULE:FREQ=WEEKLY;BYDAY=MO',
+      'RDATE;TZID="UTC";VALUE=DATE:20260905',
+      'EXRULE:FREQ=WEEKLY;BYDAY=TU',
+      'EXDATE;TZID="UTC";VALUE=DATE:20260907',
+    ],
+    recurringUuid: 'recurring-exrule-1',
+  });
+
+  const ics = createIcsCalendar([event], {
+    now: new Date(Date.UTC(2026, 0, 1, 0, 0, 0)),
+  });
+
+  const unfolded = ics.replaceAll('\r\n ', '');
+  assert.match(unfolded, /RRULE:FREQ=WEEKLY;BYDAY=MO\r\n/);
+  assert.match(unfolded, /RDATE;TZID="UTC";VALUE=DATE:20260905\r\n/);
+  assert.match(unfolded, /EXRULE:FREQ=WEEKLY;BYDAY=TU\r\n/);
+  assert.match(unfolded, /EXDATE;TZID="UTC";VALUE=DATE:20260907\r\n/);
 });
