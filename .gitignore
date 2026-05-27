@@ -7,5 +7,8 @@
 .codex/skills/.system/**
 !.codex/prompts/
 !.codex/prompts/**
+.claude/*
+!.claude/agents/
+!.claude/agents/**
 node_modules/
 dist/
