@@ -155,3 +155,33 @@ test('NORMALIZATION_WARNING_VALUES는 reminder-unsupported를 포함한다', () 
     'reminder-unsupported는 normalize warning enum에 등록되어야 한다 (VALARM 매핑의 정책)',
   );
 });
+
+test('valid한 URL은 그대로 보존된다', () => {
+  const result = normalizeRawTimeTreeEvent({
+    ...timedEventFixture,
+    url: 'https://example.test/path?query=1',
+  }, { calendar: calendarFixture, labels: labelsFixture });
+  assert.equal(result.ok, true);
+  assert.equal(result.value.url, 'https://example.test/path?query=1');
+  assert.equal(result.value.warnings.includes('url-invalid'), false);
+});
+
+test('parse 실패하는 URL은 drop + url-invalid warning이다', () => {
+  const result = normalizeRawTimeTreeEvent({
+    ...timedEventFixture,
+    url: 'not a real url',
+  }, { calendar: calendarFixture, labels: labelsFixture });
+  assert.equal(result.ok, true);
+  assert.equal(result.value.url, undefined);
+  assert.equal(result.value.warnings.includes('url-invalid'), true);
+});
+
+test('제어문자가 섞인 URL은 drop + url-invalid warning이다 (ICS line 구조 보호)', () => {
+  const result = normalizeRawTimeTreeEvent({
+    ...timedEventFixture,
+    url: 'https://example.test/\nINJECT:value',
+  }, { calendar: calendarFixture, labels: labelsFixture });
+  assert.equal(result.ok, true);
+  assert.equal(result.value.url, undefined);
+  assert.equal(result.value.warnings.includes('url-invalid'), true);
+});

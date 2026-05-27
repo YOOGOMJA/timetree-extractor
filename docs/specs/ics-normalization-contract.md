@@ -44,7 +44,8 @@ type NormalizationWarning =
   | 'attachment-omitted'
   | 'participant-omitted'
   | 'title-empty'
-  | 'reminder-unsupported';
+  | 'reminder-unsupported'
+  | 'url-invalid';
 
 type NormalizedReminder = {
   /** 이벤트 시작 시각 기준 음수 분 (e.g., -30 = 30분 전). */
@@ -63,7 +64,7 @@ type NormalizedReminder = {
 | `title` | `title` | empty title이면 placeholder와 `title-empty` warning |
 | `note` | `description` | plain text 보존, HTML 변환 금지 |
 | `location` | `location` | string 그대로 보존 |
-| `url` | `url` | URL string 검증 후 보존 |
+| `url` | `url` | `new URL()` 파싱 + U+0000–U+001F/U+007F 제어문자 검사. 실패 시 drop + `url-invalid` warning. |
 | `allDay=true` | `start/end.kind='date'` | `VALUE=DATE`로 export |
 | `allDay=false` | `start/end.kind='date-time'` | timezone 필수 |
 | `startTimezone/endTimezone` | `timezone` | missing이면 timed event export fail |
