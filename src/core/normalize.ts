@@ -66,10 +66,19 @@ export function normalizeRawTimeTreeEvent(rawEvent: unknown, context: Normalizat
   }
 
   const event = validation.value;
+  const recurrenceResult = normalizeRecurrences(event.recurrences);
+  if (!recurrenceResult.ok) {
+    return {
+      ok: false,
+      value: undefined,
+      issues: recurrenceResult.unsupportedRules.map(
+        (rule) => `unsupported recurrence rule (event ${event.id}): ${rule}`,
+      ),
+    };
+  }
+  const recurrence = recurrenceResult.recurrence;
   const collected = collectWarnings(event);
   const labels = normalizeLabels(event, context.labels ?? []);
-  const recurrenceResult = normalizeRecurrences(event.recurrences);
-  const recurrence = recurrenceResult.recurrence;
   const titleWarnings: NormalizationWarning[] = [];
   const title = normalizeTitle(event.title, titleWarnings);
   const urlResult = normalizeUrl(event.url);
@@ -185,38 +194,62 @@ function normalizeLabels(event: RawTimeTreeEvent, labels: RawTimeTreeLabel[]): s
   return label?.name ? [label.name] : [];
 }
 
-function normalizeRecurrences(recurrences: string[]): {
-  recurrence: NormalizedRecurrence | undefined;
-  warnings: NormalizationWarning[];
-} {
-  if (recurrences.length === 0) return { recurrence: undefined, warnings: [] };
+type RecurrenceResult =
+  | { ok: true; recurrence: NormalizedRecurrence | undefined; warnings: NormalizationWarning[] }
+  | { ok: false; unsupportedRules: string[]; warnings: NormalizationWarning[] };
+
+function normalizeRecurrences(recurrences: string[]): RecurrenceResult {
+  if (recurrences.length === 0) return { ok: true, recurrence: undefined, warnings: [] };
 
   const recurrence: NormalizedRecurrence = {};
   const warnings: NormalizationWarning[] = [];
+  const unsupported: string[] = [];
   for (const rule of recurrences) {
     if (rule.startsWith('RRULE:')) {
-      push(recurrence, 'rrule', rule);
-      if (!isSupportedRRule(rule)) warnings.push('recurrence-unsupported');
+      if (isSupportedRRule(rule)) {
+        push(recurrence, 'rrule', rule);
+      } else {
+        unsupported.push(rule);
+        warnings.push('recurrence-unsupported');
+      }
     } else if (rule.startsWith('RDATE')) {
       push(recurrence, 'rdate', rule);
     } else if (rule.startsWith('EXRULE:')) {
+      // EXRULE은 v1-export-policy.md 'EXRULE 유지' 정책에 따라 emit 유지.
+      // Apple/Outlook은 honor하고 Google은 무시. warning은 surface만.
       push(recurrence, 'exrule', rule);
       warnings.push('recurrence-unsupported');
     } else if (rule.startsWith('EXDATE')) {
       push(recurrence, 'exdate', rule);
     } else {
-      push(recurrence, 'rrule', rule);
+      // 알 수 없는 rule prefix는 silent emit하지 않는다 (Google import 거부 또는
+      // 잘못된 동작의 silent data loss 방지).
+      unsupported.push(rule);
       warnings.push('recurrence-unsupported');
     }
   }
 
-  return { recurrence, warnings: unique(warnings) };
+  if (unsupported.length > 0) {
+    return { ok: false, unsupportedRules: unsupported, warnings: unique(warnings) };
+  }
+  const hasAnyRule = Object.keys(recurrence).length > 0;
+  return { ok: true, recurrence: hasAnyRule ? recurrence : undefined, warnings: unique(warnings) };
 }
 
+// v1 허용 recurrence subset (ics-normalization-contract.md "Initial recurrence subset"):
+// - FREQ=DAILY: 단순 패턴 통과.
+// - FREQ=WEEKLY: BYDAY 동반 필수 — spec이 'WEEKLY with BYDAY'로 명시.
+// - FREQ=MONTHLY: BYSETPOS 조합 제외(예: 'last Monday') — Google import 안정성 보장.
+// - 그 외 FREQ(YEARLY 등): 미지원 → event-level fail.
 function isSupportedRRule(rule: string): boolean {
   if (rule.startsWith('RRULE:FREQ=DAILY')) return true;
-  if (rule.startsWith('RRULE:FREQ=WEEKLY')) return true;
-  if (rule.startsWith('RRULE:FREQ=MONTHLY')) return true;
+  if (rule.startsWith('RRULE:FREQ=WEEKLY')) {
+    return /(?:^|;)BYDAY=/i.test(rule);
+  }
+  if (rule.startsWith('RRULE:FREQ=MONTHLY')) {
+    if (/(?:^|;)BYSETPOS=/i.test(rule)) return false;
+    return true;
+  }
   return false;
 }
 

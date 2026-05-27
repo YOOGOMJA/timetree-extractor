@@ -82,14 +82,16 @@ type NormalizedReminder = {
 
 ## Initial recurrence subset
 
-처음 허용할 recurrence는 다음으로 제한한다.
+normalize가 통과시키는 RRULE은 다음 패턴으로 제한한다 (#27에서 강제).
 
-- `RRULE:FREQ=DAILY`
-- `RRULE:FREQ=WEEKLY` with `BYDAY`
-- `RRULE:FREQ=MONTHLY` basic patterns, fixture 확인 후
-- `RDATE` / `EXDATE`는 fixture 확인 후
+- `RRULE:FREQ=DAILY` (BYxxx 조건 없음)
+- `RRULE:FREQ=WEEKLY` **+ `BYDAY` 필수**
+- `RRULE:FREQ=MONTHLY` 기본 패턴 — `BYSETPOS`는 거부 (예: 'last Monday of month')
+- `RDATE` / `EXDATE`는 그대로 보존
 
-지원하지 않는 recurrence는 `recurrence-unsupported` warning과 함께 해당 event의 `ICS` export를 fail 처리한다.
+위 subset을 벗어나는 RRULE 또는 알 수 없는 rule prefix를 만나면 `recurrence-unsupported` warning과 함께 **event-level fail**(`NormalizationResult.ok = false`)로 처리한다 — silent emit으로 사용자가 빠진 일정을 모르는 일을 막는다.
+
+EXRULE은 위 정책에서 제외 — RFC 5545에서 deprecated이고 Google import는 무시하지만 Apple/Outlook이 honor하므로 emit을 유지한다 (`v1-export-policy.md` "EXRULE 보존"). `recurrence-unsupported` warning은 동반.
 
 ## 결론
 
