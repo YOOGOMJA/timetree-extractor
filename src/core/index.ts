@@ -18,5 +18,6 @@ export {
   type NormalizedCalendarEvent,
   type NormalizedDateTime,
   type NormalizedRecurrence,
+  type NormalizedReminder,
 } from './normalize.js';
 export * from './ics.js';

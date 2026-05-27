@@ -11,7 +11,8 @@
 - SQLite `events` table에 `title`, `all_day`, `start_at`, `end_at`, `start_timezone`, `end_timezone` field가 있다.
 - SQLite JSONB column은 SQLite `json(column)` 함수로 text JSON으로 변환할 수 있다.
 - 실제 page smoke에서 `recurrences`는 array이며, 원소가 string인 shape가 확인됐다.
-- `attendees`, `alerts`, `attachment`, `files`도 decode 가능하지만 privacy-sensitive data이므로 v1 export payload에 싣지 않는다.
+- `attendees`, `attachment`, `files`도 decode 가능하지만 privacy-sensitive data이므로 v1 export payload에 싣지 않는다.
+- `alerts`도 decode 가능하며, 원본 payload는 싣지 않고 reminder timing(`minutesBefore`)만 추출해 `VALARM`으로 export한다 (정책: `google-calendar-import-field-compat.md`).
 
 ## Include
 
@@ -28,13 +29,13 @@
 | `note` | 있으면 export | description 후보 |
 | `label_id` | label metadata가 있으면 label name으로 export | calendar organization 보존 |
 | `recurrences` | string rule만 export | JSONB decode로 string array 확인 |
+| `alerts` | reminder timing(`minutesBefore`)만 추출해 `VALARM` emit | raw payload는 보존하지 않음 (`google-calendar-import-field-compat.md` 정책) |
 
 ## Exclude with warning
 
 | Field | v1 처리 | Warning |
 | --- | --- | --- |
 | `attendees` | export하지 않음 | `shared-calendar-personal-data` / `participant-omitted` |
-| `alerts` | export하지 않음 | reminder policy 미정 |
 | `attachment` | export하지 않음 | `unsupported-attachment` / `attachment-omitted` |
 | `files` | export하지 않음 | `unsupported-attachment` / `attachment-omitted` |
 | activities/comments | 읽지 않음 | `unsupported-comment` / `comment-omitted` |

@@ -160,6 +160,7 @@ function createIcsEventLines(event: NormalizedCalendarEvent, timestamp: string):
   if (event.url) lines.push(`URL:${event.url}`);
   if (event.labels && event.labels.length > 0) lines.push(`CATEGORIES:${event.labels.map(escapeText).join(',')}`);
   if (event.recurrence) lines.push(...formatRecurrenceLines(event.recurrence));
+  lines.push(...createIcsValarmLines(event));
 
   lines.push('END:VEVENT');
   return lines;
@@ -259,4 +260,30 @@ function isUtf8ContinuationByte(byte: number | undefined): boolean {
 
 function pad(value: number): string {
   return String(value).padStart(2, '0');
+}
+
+function formatTriggerOffset(minutesBefore: number): string | null {
+  if (!Number.isInteger(minutesBefore) || minutesBefore >= 0) return null;
+  const abs = Math.abs(minutesBefore);
+  const MIN_PER_DAY = 60 * 24;
+  if (abs >= MIN_PER_DAY && abs % MIN_PER_DAY === 0) return `-P${abs / MIN_PER_DAY}D`;
+  if (abs >= 60 && abs % 60 === 0) return `-PT${abs / 60}H`;
+  return `-PT${abs}M`;
+}
+
+function createIcsValarmLines(event: NormalizedCalendarEvent): string[] {
+  if (!event.reminders || event.reminders.length === 0) return [];
+  const lines: string[] = [];
+  for (const reminder of event.reminders) {
+    const trigger = formatTriggerOffset(reminder.minutesBefore);
+    if (!trigger) continue;
+    lines.push(
+      'BEGIN:VALARM',
+      'ACTION:DISPLAY',
+      `DESCRIPTION:${escapeText(event.title)}`,
+      `TRIGGER:${trigger}`,
+      'END:VALARM',
+    );
+  }
+  return lines;
 }

@@ -37,9 +37,17 @@
 - 이유: Google은 `VTIMEZONE` component를 무시하고, `TZID` string을 자신의 IANA database에 직접 resolve한다. 따라서 non-IANA string(예: Windows 표기, alias)이면 Google이 시각을 잘못 해석한다.
 - `TZID`가 valid IANA가 아니면 `timezone-not-iana` warning을 emit한다(`NORMALIZATION_WARNING_VALUES` enum에 추가 — #12/#18에서 구현, `docs/specs/ics-normalization-contract.md`도 함께 갱신).
 
+### `alerts → VALARM` — `ACTION:DISPLAY` 일관, relative `TRIGGER`
+
+- TimeTree reminder를 ICS `VALARM` component로 emit한다.
+- `ACTION`은 항상 `DISPLAY`. Google file import는 `EMAIL`/`AUDIO`를 popup으로 강등하므로 매핑을 단순화한다.
+- `TRIGGER`는 relative offset format(`-PT{N}M` / `-PT{N}H` / `-P{N}D`)로 출력하며 단위는 시간/일로 깔끔히 떨어지지 않으면 분 단위로 fallback한다.
+- `DESCRIPTION`은 RFC 5545 요구사항으로 event title을 재사용한다.
+- caveat: Google file import의 reminder는 **primary calendar로 import할 때만 신뢰성 있게 반영**되고, secondary calendar는 silent drop된다. UI 추가 경고는 두지 않으며(공유 캘린더 경고 모달이 export 게이트로 충분), 사용자는 import 실패 시 이 문서를 참조한다.
+- 음수 정수가 아닌 `minutesBefore`(0/양수/소수/NaN)는 ICS writer 단에서 silent skip한다. raw → normalized 단계에서 `reminder-unsupported` warning을 emit한다(후속 작업, #13).
+
 ### 계획됨 (별도 이슈)
 
-- `alerts → VALARM`: issue #13. caveat — Google import의 reminder는 primary calendar에서만 신뢰성 있게 반영되는 것으로 보인다(미검증, 아래 참조).
 - `recurringUuid → RECURRENCE-ID`: issue #14. recurring event instance override 표현.
 
 ### 의도적으로 제외 (정책 + Google 모두)
@@ -70,7 +78,7 @@
 | `startTimezone`/`endTimezone` | `timezone` | `TZID` parameter | remap (IANA 검증) |
 | `recurrences` (`RRULE`/`RDATE`/`EXDATE`) | `recurrence` | `RRULE`/`RDATE`/`EXDATE` | emit (supported subset만) |
 | `recurrences` (`EXRULE`) | `recurrence.exrule` | `EXRULE` | emit (Google은 무시, Apple/Outlook 위해 보존, `recurrence-unsupported` 유지) |
-| `alerts` | (계획) | `VALARM` | 계획됨 (#13) |
+| `alerts` | `reminders` | `VALARM` | emit (`ACTION:DISPLAY`, relative `TRIGGER`) |
 | `recurringUuid` | (계획) | `RECURRENCE-ID` | 계획됨 (#14) |
 | `attendees` | warning만 | — | drop (`participant-omitted`) |
 | `attachment` / `files` | warning만 | — | drop (`attachment-omitted`) |

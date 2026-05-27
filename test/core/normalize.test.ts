@@ -9,7 +9,7 @@ import {
   unsupportedRecurringEventFixture,
   weeklyRecurringEventFixture,
 } from '../fixtures.js';
-import { normalizeRawTimeTreeEvent } from '../../src/core/normalize.js';
+import { normalizeRawTimeTreeEvent, NORMALIZATION_WARNING_VALUES } from '../../src/core/normalize.js';
 
 test('normalizes a timed event while preserving timezone and source identifiers', () => {
   const result = normalizeRawTimeTreeEvent(timedEventFixture, {
@@ -147,4 +147,11 @@ test('warns when participant and attachment data are intentionally omitted', () 
   assert.equal(result.ok, true);
   assert.equal(result.value.warnings.includes('participant-omitted'), true);
   assert.equal(result.value.warnings.includes('attachment-omitted'), true);
+});
+
+test('NORMALIZATION_WARNING_VALUES는 reminder-unsupported를 포함한다', () => {
+  assert.ok(
+    (NORMALIZATION_WARNING_VALUES as readonly string[]).includes('reminder-unsupported'),
+    'reminder-unsupported는 normalize warning enum에 등록되어야 한다 (VALARM 매핑의 정책)',
+  );
 });
