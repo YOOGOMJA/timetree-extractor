@@ -16,6 +16,7 @@ type NormalizedCalendarEvent = {
   end: NormalizedDateTime;
   recurrence?: NormalizedRecurrence;
   labels?: string[];
+  reminders?: NormalizedReminder[];
   source: {
     provider: 'timetree';
     eventId: string;
@@ -44,8 +45,16 @@ type NormalizationWarning =
   | 'comment-omitted'
   | 'participant-omitted'
   | 'label-color-approximation'
-  | 'title-empty';
+  | 'title-empty'
+  | 'reminder-unsupported';
+
+type NormalizedReminder = {
+  /** 이벤트 시작 시각 기준 음수 분 (e.g., -30 = 30분 전). */
+  minutesBefore: number;
+};
 ```
+
+- `reminder-unsupported`: VALARM 매핑 대상이 아닌 alert(미지원 shape, 양수 trigger 등). normalize raw → reminder 단계에서 emit하며 ICS writer는 단순 skip한다.
 
 ## Mapping rules
 

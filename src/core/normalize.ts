@@ -9,9 +9,15 @@ export const NORMALIZATION_WARNING_VALUES = [
   'participant-omitted',
   'label-color-approximation',
   'title-empty',
+  'reminder-unsupported',
 ] as const;
 
 export type NormalizationWarning = (typeof NORMALIZATION_WARNING_VALUES)[number];
+
+export type NormalizedReminder = {
+  /** 이벤트 시작 시각 기준 음수 분 (e.g., -30 = 30분 전). */
+  minutesBefore: number;
+};
 
 export type NormalizedDateTime =
   | { kind: 'date'; date: string }
@@ -35,6 +41,7 @@ export type NormalizedCalendarEvent = {
   end: NormalizedDateTime;
   recurrence?: NormalizedRecurrence;
   labels?: string[];
+  reminders?: NormalizedReminder[];
   source: {
     provider: 'timetree';
     eventId: string;
