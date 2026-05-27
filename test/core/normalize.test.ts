@@ -140,16 +140,54 @@ test('preserves supported recurrence rules', () => {
   assert.equal(result.value.warnings.includes('recurrence-unsupported'), false);
 });
 
-test('marks unsupported recurrence without silently dropping the source rule', () => {
+test('unsupported recurrence는 event-level fail로 처리된다 (#27)', () => {
   const result = normalizeRawTimeTreeEvent(unsupportedRecurringEventFixture, {
     calendar: calendarFixture,
     labels: labelsFixture,
   });
 
+  assert.equal(result.ok, false);
+  assert.equal(result.value, undefined);
+  assert.match(result.issues.join('\n'), /unsupported recurrence rule.*FREQ=YEARLY/);
+});
+
+test('WEEKLY without BYDAY는 unsupported로 fail한다 (spec subset)', () => {
+  const result = normalizeRawTimeTreeEvent(
+    { ...timedEventFixture, recurrences: ['RRULE:FREQ=WEEKLY'] },
+    { calendar: calendarFixture, labels: labelsFixture },
+  );
+  assert.equal(result.ok, false);
+  assert.match(result.issues.join('\n'), /FREQ=WEEKLY/);
+});
+
+test('MONTHLY with BYSETPOS는 unsupported로 fail한다 (비기본 패턴)', () => {
+  const result = normalizeRawTimeTreeEvent(
+    { ...timedEventFixture, recurrences: ['RRULE:FREQ=MONTHLY;BYDAY=MO;BYSETPOS=-1'] },
+    { calendar: calendarFixture, labels: labelsFixture },
+  );
+  assert.equal(result.ok, false);
+  assert.match(result.issues.join('\n'), /BYSETPOS/);
+});
+
+test('MONTHLY 기본 패턴은 통과한다', () => {
+  const result = normalizeRawTimeTreeEvent(
+    { ...timedEventFixture, recurrences: ['RRULE:FREQ=MONTHLY;BYMONTHDAY=15'] },
+    { calendar: calendarFixture, labels: labelsFixture },
+  );
   assert.equal(result.ok, true);
-  assert.deepEqual(result.value.recurrence, {
-    rrule: ['RRULE:FREQ=YEARLY;BYMONTH=5;BYMONTHDAY=5'],
-  });
+  assert.deepEqual(result.value.recurrence, { rrule: ['RRULE:FREQ=MONTHLY;BYMONTHDAY=15'] });
+});
+
+test('EXRULE은 unsupported지만 event는 통과하고 warning만 남는다 (Apple/Outlook 호환)', () => {
+  const result = normalizeRawTimeTreeEvent(
+    {
+      ...timedEventFixture,
+      recurrences: ['RRULE:FREQ=WEEKLY;BYDAY=MO', 'EXRULE:FREQ=WEEKLY;BYDAY=FR'],
+    },
+    { calendar: calendarFixture, labels: labelsFixture },
+  );
+  assert.equal(result.ok, true);
+  assert.deepEqual(result.value.recurrence?.exrule, ['EXRULE:FREQ=WEEKLY;BYDAY=FR']);
   assert.equal(result.value.warnings.includes('recurrence-unsupported'), true);
 });
 
