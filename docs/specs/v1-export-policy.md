@@ -82,7 +82,7 @@ v1 export output은 다음을 포함하지 않는다.
 
 ## ICS writer policy
 
-결론: v1 `ICS` writer는 `TZID` 기반 date-time과 `VALUE=DATE` all-day event를 출력한다. `VTIMEZONE` component 생성은 v1 후순위로 둔다.
+결론: v1 `ICS` writer는 `TZID` 기반 date-time과 `VALUE=DATE` all-day event를 출력하며, 사용된 `TZID`마다 STANDARD-only `VTIMEZONE` 컴포넌트를 함께 emit한다 (issue #5에서 도입). DAYLIGHT 컴포넌트와 DST 경계 모델링은 후순위.
 
 포함:
 
@@ -95,7 +95,7 @@ Timezone rule:
 
 - timed event는 `DTSTART;TZID=Asia/Seoul:YYYYMMDDTHHMMSS` 형태로 출력한다.
 - all-day event는 `DTSTART;VALUE=DATE:YYYYMMDD`와 `DTEND;VALUE=DATE:YYYYMMDD` 형태로 출력한다.
-- `VTIMEZONE` 생성은 calendar app compatibility smoke 이후 결정한다.
+- 사용된 `TZID`마다 STANDARD-only `VTIMEZONE` 블록을 emit한다 — 첫 이벤트 기준 offset으로 고정되므로 DST 경계를 넘는 단일 export에서는 한쪽이 1시간 어긋날 수 있다 (`src/core/ics.ts:72-79`).
 
 Text escaping:
 
