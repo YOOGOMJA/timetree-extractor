@@ -180,7 +180,9 @@ test('emits no VTIMEZONE block when only all-day events are exported', () => {
   assert.doesNotMatch(ics, /BEGIN:VTIMEZONE/);
 });
 
-test('emits a VTIMEZONE for a TZID referenced only inside a recurrence line', () => {
+test('UTC zone은 VTIMEZONE 블록을 생성하지 않는다 (RFC special-case, #43)', () => {
+  // recurrence에 TZID="UTC"가 등장해도, UTC는 RFC 5545에서 special zone이므로
+  // VTIMEZONE 컴포넌트가 필요하지 않다. timed event도 'Z' suffix form으로 emit된다.
   const event = normalized({
     ...allDayEventFixture,
     id: 'event-rdate-utc-only',
@@ -193,9 +195,7 @@ test('emits a VTIMEZONE for a TZID referenced only inside a recurrence line', ()
   });
 
   const unfolded = ics.replaceAll('\r\n ', '');
-  assert.match(unfolded, /BEGIN:VTIMEZONE\r\nTZID:UTC\r\n/);
-  assert.match(unfolded, /TZOFFSETFROM:\+0000\r\n/);
-  assert.match(unfolded, /TZOFFSETTO:\+0000\r\n/);
+  assert.doesNotMatch(unfolded, /BEGIN:VTIMEZONE\r\nTZID:UTC\r\n/);
 });
 
 test('derives America/New_York VTIMEZONE offset from event time (January is EST -0500, July is EDT -0400)', () => {
@@ -235,7 +235,7 @@ test('derives America/New_York VTIMEZONE offset from event time (January is EST 
   assert.match(julyUnfolded, /TZOFFSETTO:-0400\r\n/);
 });
 
-test('emits two VTIMEZONE blocks for a mixed Asia/Seoul + UTC calendar', () => {
+test('UTC와 함께 있는 다른 TZID는 자기 VTIMEZONE만 emit, UTC event는 Z form (#43)', () => {
   const seoulEvent = normalized(timedEventFixture);
   const utcEvent = normalized({
     ...timedEventFixture,
@@ -249,10 +249,40 @@ test('emits two VTIMEZONE blocks for a mixed Asia/Seoul + UTC calendar', () => {
   });
 
   const matches = ics.match(/BEGIN:VTIMEZONE/g) ?? [];
-  assert.equal(matches.length, 2, 'expected one VTIMEZONE block per unique TZID');
+  assert.equal(matches.length, 1, 'UTC zone 제외, Asia/Seoul 한 블록만');
   const unfolded = ics.replaceAll('\r\n ', '');
   assert.match(unfolded, /TZID:Asia\/Seoul\r\n/);
-  assert.match(unfolded, /TZID:UTC\r\n/);
+  assert.doesNotMatch(unfolded, /TZID:UTC\r\n/);
+  // UTC event의 DTSTART는 Z suffix form
+  assert.match(unfolded, /DTSTART:\d{8}T\d{6}Z\r\n/);
+});
+
+test('UTC timezone event는 RFC 5545 canonical Z form으로 emit한다 (#43)', () => {
+  const utcEvent = normalized({
+    ...timedEventFixture,
+    id: 'event-utc-z-form',
+    startTimezone: 'UTC',
+    endTimezone: 'UTC',
+  });
+  const ics = createIcsCalendar([utcEvent], { now: new Date(Date.UTC(2026, 0, 1, 0, 0, 0)) });
+  const unfolded = ics.replaceAll('\r\n ', '');
+  // TZID 파라미터 없이 Z suffix 형식
+  assert.match(unfolded, /DTSTART:\d{8}T\d{6}Z\r\n/);
+  assert.match(unfolded, /DTEND:\d{8}T\d{6}Z\r\n/);
+  assert.doesNotMatch(unfolded, /DTSTART;TZID=UTC/);
+});
+
+test('Etc/UTC alias도 UTC와 동일하게 Z form으로 emit한다 (#43)', () => {
+  const event = normalized({
+    ...timedEventFixture,
+    id: 'event-etc-utc-z',
+    startTimezone: 'Etc/UTC',
+    endTimezone: 'Etc/UTC',
+  });
+  const ics = createIcsCalendar([event], { now: new Date(Date.UTC(2026, 0, 1, 0, 0, 0)) });
+  const unfolded = ics.replaceAll('\r\n ', '');
+  assert.match(unfolded, /DTSTART:\d{8}T\d{6}Z\r\n/);
+  assert.doesNotMatch(unfolded, /BEGIN:VTIMEZONE/);
 });
 
 test('mirrors labels and URL into DESCRIPTION while keeping CATEGORIES and URL lines (issue #12)', () => {

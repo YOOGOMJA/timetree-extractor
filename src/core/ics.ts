@@ -38,6 +38,8 @@ const FALLBACK_REFERENCE_MS = Date.UTC(2025, 0, 15);
 function collectTzids(events: NormalizedCalendarEvent[]): Map<string, number> {
   const tzids = new Map<string, number>();
   const recordTzid = (tzid: string, referenceMs: number | undefined): void => {
+    // UTC zone은 RFC special-cased — VTIMEZONE 컴포넌트 불요 (Z form으로 emit).
+    if (isUtcZone(tzid)) return;
     if (tzids.has(tzid)) return;
     tzids.set(tzid, referenceMs ?? FALLBACK_REFERENCE_MS);
   };
@@ -185,7 +187,14 @@ function composeDescription(event: NormalizedCalendarEvent): string {
 
 function formatDateTimeLine(name: 'DTSTART' | 'DTEND', value: NormalizedDateTime): string {
   if (value.kind === 'date') return `${name};VALUE=DATE:${value.date.replaceAll('-', '')}`;
+  // UTC zone은 RFC 5545 §3.3.5 canonical Z form으로 emit한다. 'TZID=UTC'는
+  // redundant이고 일부 strict parser가 거부할 수 있다 (cycle-2 review).
+  if (isUtcZone(value.timezone)) return `${name}:${formatUtcDateTime(new Date(value.epochMs))}`;
   return `${name};TZID=${value.timezone}:${formatZonedDateTime(value.epochMs, value.timezone)}`;
+}
+
+function isUtcZone(timezone: string): boolean {
+  return timezone === 'UTC' || timezone === 'Etc/UTC';
 }
 
 // EXRULE is deprecated in RFC 5545 and Google import ignores it, but Apple/Outlook
