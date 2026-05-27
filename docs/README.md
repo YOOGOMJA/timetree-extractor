@@ -20,12 +20,13 @@
 | 12 | `specs/passive-network-observer-test-spec.md` | passive observer TDD test gate |
 | 13 | `specs/v1-export-policy.md` | v1 export 포함/제외 field와 warning 정책 |
 | 14 | `specs/google-calendar-import-field-compat.md` | `ICS` output을 Google Calendar 파일 import에 맞추는 field 호환 정책 |
-| 15 | `specs/cli-harness-plan.md` | local CLI harness 구현 계획 |
-| 16 | `specs/dom-only-validation-spec.md` | 첫 milestone의 실행 spec과 pass/fail 기준 |
-| 17 | `decisions/0001-local-first-v1.md` | Google Calendar 연동이 아니라 local export로 시작하는 이유 |
-| 18 | `decisions/0002-implementation-go-no-go.md` | 구현 여부와 허용 범위 결정 |
-| 19 | `decisions/0003-sqlite-engine-boundary.md` | SQLite engine과 reader port 결정 |
-| 20 | `architecture-notes.md` | 검증 후 가능한 browser extension 구조 |
+| 15 | `specs/ics-emit-cross-cutting-checks.md` | `ICS` writer review의 cross-cutting 정책(인코딩·folding·UID·file size) |
+| 16 | `specs/cli-harness-plan.md` | local CLI harness 구현 계획 |
+| 17 | `specs/dom-only-validation-spec.md` | 첫 milestone의 실행 spec과 pass/fail 기준 |
+| 18 | `decisions/0001-local-first-v1.md` | Google Calendar 연동이 아니라 local export로 시작하는 이유 |
+| 19 | `decisions/0002-implementation-go-no-go.md` | 구현 여부와 허용 범위 결정 |
+| 20 | `decisions/0003-sqlite-engine-boundary.md` | SQLite engine과 reader port 결정 |
+| 21 | `architecture-notes.md` | 검증 후 가능한 browser extension 구조 |
 
 ## 문서 작성 규칙
 
