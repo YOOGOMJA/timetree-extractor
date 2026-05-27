@@ -102,12 +102,21 @@ export function normalizeRawTimeTreeEvent(rawEvent: unknown, context: Normalizat
 
 function normalizeStart(event: RawTimeTreeEvent): NormalizedDateTime {
   if (event.allDay) return { kind: 'date', date: toUtcDate(event.startAt) };
-  return { kind: 'date-time', epochMs: event.startAt, timezone: event.startTimezone as string };
+  return { kind: 'date-time', epochMs: event.startAt, timezone: resolveTimezone(event.startTimezone) };
 }
 
 function normalizeEnd(event: RawTimeTreeEvent): NormalizedDateTime {
   if (event.allDay) return { kind: 'date', date: toUtcDate(event.endAt) };
-  return { kind: 'date-time', epochMs: event.endAt, timezone: event.endTimezone as string };
+  return { kind: 'date-time', epochMs: event.endAt, timezone: resolveTimezone(event.endTimezone) };
+}
+
+// non-IANA timezone string은 Google import가 신뢰성 있게 처리하지 못하므로
+// UTC로 fallback한다 (epochMs는 그대로). 'timezone-not-iana' warning은
+// collectWarnings에서 이미 push되어 사용자에게 fallback이 일어났음을 surface한다.
+// 정책 출처: google-calendar-import-field-compat.md §"TZID — valid IANA name 필수".
+function resolveTimezone(timezone: string | null | undefined): string {
+  if (timezone != null && isValidIanaTimezone(timezone)) return timezone;
+  return 'UTC';
 }
 
 function normalizeTitle(title: string, warnings: NormalizationWarning[]): string {

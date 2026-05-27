@@ -35,7 +35,7 @@
 
 - timed event의 `TZID` parameter는 valid IANA timezone name이어야 한다(예: `Asia/Seoul`).
 - 이유: Google은 `VTIMEZONE` component를 무시하고, `TZID` string을 자신의 IANA database에 직접 resolve한다. 따라서 non-IANA string(예: Windows 표기, alias)이면 Google이 시각을 잘못 해석한다.
-- `TZID`가 valid IANA가 아니면 `timezone-not-iana` warning을 emit한다(`NORMALIZATION_WARNING_VALUES` enum에 추가 — #12/#18에서 구현, `docs/specs/ics-normalization-contract.md`도 함께 갱신).
+- `TZID`가 valid IANA가 아니면 normalize 단계에서 `UTC`로 fallback하고 `timezone-not-iana` warning을 emit한다(#28). epochMs는 변경하지 않으므로 절대 시각은 보존되고, 사용자는 warning으로 fallback 사실을 인지한다.
 
 ### `alerts → VALARM` — `ACTION:DISPLAY` 일관, relative `TRIGGER`
 

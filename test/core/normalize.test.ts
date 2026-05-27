@@ -87,6 +87,36 @@ test('warns for offset-style timezone identifiers that Intl accepts but are not 
   }
 });
 
+test('non-IANA timezone은 UTC로 fallback되고 epochMs는 보존된다 (#28)', () => {
+  const result = normalizeRawTimeTreeEvent(
+    { ...timedEventFixture, startTimezone: '+09:00', endTimezone: '+09:00' },
+    { calendar: calendarFixture, labels: labelsFixture },
+  );
+  assert.equal(result.ok, true);
+  // epochMs는 그대로
+  assert.deepEqual(result.value.start, {
+    kind: 'date-time',
+    epochMs: timedEventFixture.startAt,
+    timezone: 'UTC',
+  });
+  assert.deepEqual(result.value.end, {
+    kind: 'date-time',
+    epochMs: timedEventFixture.endAt,
+    timezone: 'UTC',
+  });
+  assert.equal(result.value.warnings.includes('timezone-not-iana'), true);
+});
+
+test('valid IANA timezone은 그대로 보존된다 (fallback 미적용)', () => {
+  const result = normalizeRawTimeTreeEvent(timedEventFixture, {
+    calendar: calendarFixture,
+    labels: labelsFixture,
+  });
+  assert.equal(result.ok, true);
+  assert.equal(result.value.start.kind === 'date-time' && result.value.start.timezone, 'Asia/Seoul');
+  assert.equal(result.value.warnings.includes('timezone-not-iana'), false);
+});
+
 test('fails timed normalization when timezone is missing', () => {
   const result = normalizeRawTimeTreeEvent(missingTimezoneTimedEventFixture, {
     calendar: calendarFixture,
