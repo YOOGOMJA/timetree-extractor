@@ -21,7 +21,6 @@ type NormalizedCalendarEvent = {
     provider: 'timetree';
     eventId: string;
     calendarId: number;
-    originalUrl?: string;
   };
   warnings: NormalizationWarning[];
 };
