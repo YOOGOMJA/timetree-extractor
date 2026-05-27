@@ -6,7 +6,6 @@
 
 - `docs/research/timetree-policy-and-web-research.md`
 - `docs/research/timetree-web-data-surface.md`
-- `.omx/specs/deep-interview-project-sequencing.md`
 
 ## 목표
 
