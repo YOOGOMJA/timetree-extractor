@@ -104,4 +104,4 @@ type NormalizedReminder = {
 - timed event: `TZID` parameter를 사용한다.
 - all-day event: `VALUE=DATE`를 사용한다.
 - recurrence: normalized recurrence line을 중복 property name 없이 보존한다.
-- `VTIMEZONE`: v1에서는 생성하지 않는다.
+- `VTIMEZONE`: emit된 `TZID`마다 STANDARD-only 컴포넌트 1개를 생성한다(issue #5 / commit `4143355`). DST 경계를 모델링하지 않으므로, 단일 export가 DST 경계를 넘으면 한쪽 시간대가 1시간 어긋난다 — `src/core/ics.ts:72-79` 주석에 한계가 기록되어 있고 후속 DAYLIGHT 모델링은 별도 이슈에서 다룬다.
