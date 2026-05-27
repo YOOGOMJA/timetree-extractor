@@ -74,12 +74,18 @@ test('conformance: 모든 content line이 75 octet 이하이다 (folding continu
   }
 });
 
-test('conformance: folded line을 unfold한 뒤 strict UTF-8 decode가 통과한다 (멀티바이트 경계 무결성)', () => {
+test('conformance: folded line이 multi-byte 경계를 자르지 않는다 (U+FFFD 부재)', () => {
+  // foldLine의 TextDecoder는 fatal:false라 multi-byte를 잘못 자르면 chunk에
+  // U+FFFD(replacement character)가 박힌다. 그 string을 다시 encode하면 U+FFFD
+  // 자체가 유효한 UTF-8(EF BF BD)로 정규화되어 strict decode는 통과한다
+  // (Codex P2, 2026-05-27). 따라서 strict decode와 U+FFFD 부재를 둘 다 검사한다.
   const ics = buildKitchenSinkIcs();
+  assert.equal(ics.indexOf('�'), -1, 'output에 U+FFFD가 포함됨 — foldLine이 UTF-8 경계를 잘랐을 가능성');
+
   const unfolded = ics.replaceAll('\r\n ', '');
   const bytes = new TextEncoder().encode(unfolded);
   const decoder = new TextDecoder('utf-8', { fatal: true });
-  assert.doesNotThrow(() => decoder.decode(bytes), 'unfolded ICS가 valid UTF-8이 아님 — folding이 multi-byte 경계를 자름');
+  assert.doesNotThrow(() => decoder.decode(bytes), 'unfolded ICS가 valid UTF-8이 아님');
 });
 
 test('conformance: BEGIN:VCALENDAR과 END:VCALENDAR가 각각 정확히 1회 등장', () => {
