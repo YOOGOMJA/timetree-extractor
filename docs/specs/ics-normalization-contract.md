@@ -42,9 +42,7 @@ type NormalizationWarning =
   | 'timezone-not-iana'
   | 'recurrence-unsupported'
   | 'attachment-omitted'
-  | 'comment-omitted'
   | 'participant-omitted'
-  | 'label-color-approximation'
   | 'title-empty'
   | 'reminder-unsupported';
 
