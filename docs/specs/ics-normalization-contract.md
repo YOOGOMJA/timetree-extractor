@@ -59,7 +59,7 @@ type NormalizedReminder = {
 
 | Raw field | Normalized field | Rule |
 | --- | --- | --- |
-| `id` | `uid`, `source.eventId` | `uid`는 deterministic하게 생성 |
+| `id` | `uid`, `source.eventId` | `uid`는 `timetree:{calendarId}:{sanitize(id)}` 형식으로 deterministic 생성. ASCII printable(U+0020–U+007E) 외 byte는 UTF-8 percent-encoding으로 정규화 (재import dedup 보장). `source.eventId`는 원본 보존. |
 | `calendarId` | `source.calendarId` | 그대로 보존 |
 | `title` | `title` | empty title이면 placeholder와 `title-empty` warning |
 | `note` | `description` | plain text 보존, HTML 변환 금지 |

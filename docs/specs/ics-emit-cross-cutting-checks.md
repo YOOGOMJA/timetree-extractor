@@ -49,7 +49,7 @@ RFC 5545 §3.3.10은 `RRULE`의 `COUNT`와 `UNTIL` parameter가 상호 배타임
 
 - **deterministic**: 같은 raw event를 두 번 export하면 동일 UID여야 한다. 그래야 Google file import의 UID-based dedup이 동작해 재import 시 중복이 생기지 않는다(`add-to-calendar-pro.com` ICS 가이드).
 - **ASCII printable**: UID에 non-ASCII가 있으면 일부 parser가 매칭에 실패해 dedup이 무력화되는 사례가 보고됨. ASCII subset `[\x20-\x7E]`로 한정.
-- 현재 emitter: `escapeText`로 escape는 하지만 ASCII 여부와 결정성은 검증하지 않는다. normalize.ts에서 UID를 어떻게 만드는지(`source.eventId` 기반인지)는 spec(`ics-normalization-contract.md`)이 "deterministic하게 생성"으로 요구하지만 시행 메커니즘은 없다.
+- 현재 emitter: `normalize.ts`의 `sanitizeUidId`가 UID 본체(`id` 부분)를 UTF-8 percent-encoding으로 ASCII printable(U+0020–U+007E) subset으로 정규화한다 (#29). `escapeText`는 ICS line-level escape(backslash/쉼표/세미콜론)만 담당하고 ASCII 보장은 normalize 단계에 위임된다. `timetree:{calendarId}:` prefix는 calendarId가 정수이므로 항상 ASCII.
 - 검증 위치: conformance test (#23, ASCII check) + reviewer subagent (#22, 결정성 cross-check).
 
 ### 6. File size — 1MB cliff

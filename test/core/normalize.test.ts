@@ -185,3 +185,34 @@ test('제어문자가 섞인 URL은 drop + url-invalid warning이다 (ICS line �
   assert.equal(result.value.url, undefined);
   assert.equal(result.value.warnings.includes('url-invalid'), true);
 });
+
+test('ASCII printable id는 UID에 그대로 들어간다', () => {
+  const result = normalizeRawTimeTreeEvent({
+    ...timedEventFixture,
+    id: 'event-abc-123',
+  }, { calendar: calendarFixture, labels: labelsFixture });
+  assert.equal(result.ok, true);
+  assert.equal(result.value.uid, 'timetree:1:event-abc-123');
+});
+
+test('non-ASCII id는 UTF-8 percent-encoding으로 UID에 정규화된다 (재import dedup)', () => {
+  const result = normalizeRawTimeTreeEvent({
+    ...timedEventFixture,
+    id: '회의-2026',
+  }, { calendar: calendarFixture, labels: labelsFixture });
+  assert.equal(result.ok, true);
+  // '회'=E3 9A 8C wait '회'는 UTF-8로 EC 9A 8C, '의'는 EC 9D 98. '-'=0x2D, ASCII 보존.
+  assert.equal(result.value.uid, 'timetree:1:%ED%9A%8C%EC%9D%98-2026');
+  // 원본 보존 검증
+  assert.equal(result.value.source.eventId, '회의-2026');
+});
+
+test('UID sanitize는 idempotent하다 (같은 입력 → 같은 출력)', () => {
+  const raw = { ...timedEventFixture, id: '🗓️-event' };
+  const a = normalizeRawTimeTreeEvent(raw, { calendar: calendarFixture, labels: labelsFixture });
+  const b = normalizeRawTimeTreeEvent(raw, { calendar: calendarFixture, labels: labelsFixture });
+  assert.equal(a.ok, true);
+  assert.equal(b.ok, true);
+  assert.equal(a.value.uid, b.value.uid);
+  assert.match(a.value.uid, /^timetree:1:[\x20-\x7E]+$/u);
+});
