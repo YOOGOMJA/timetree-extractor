@@ -38,7 +38,7 @@
 | `attendees` | export하지 않음 | `shared-calendar-personal-data` / `participant-omitted` |
 | `attachment` | export하지 않음 | `unsupported-attachment` / `attachment-omitted` |
 | `files` | export하지 않음 | `unsupported-attachment` / `attachment-omitted` |
-| activities/comments | 읽지 않음 | `unsupported-comment` / `comment-omitted` |
+| activities/comments | 읽지 않음 (정책 차원 제외, normalize warning 없음) | `unsupported-comment` (EXTRACTION; 현재 emit 경로 없음) |
 
 ## Recurrence policy
 

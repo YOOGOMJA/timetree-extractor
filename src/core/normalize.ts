@@ -5,9 +5,7 @@ export const NORMALIZATION_WARNING_VALUES = [
   'timezone-not-iana',
   'recurrence-unsupported',
   'attachment-omitted',
-  'comment-omitted',
   'participant-omitted',
-  'label-color-approximation',
   'title-empty',
   'reminder-unsupported',
 ] as const;
