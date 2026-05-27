@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import { normalizeRawTimeTreeEvent } from '../../src/core/normalize.js';
+import type { NormalizedCalendarEvent } from '../../src/core/normalize.js';
 import { createIcsCalendar } from '../../src/core/ics.js';
 import { allDayEventFixture, calendarFixture, labelsFixture, timedEventFixture, weeklyRecurringEventFixture } from '../fixtures.js';
 
@@ -325,4 +326,91 @@ test('emits EXRULE alongside RRULE, RDATE, and EXDATE (preserved for Apple/Outlo
   assert.match(unfolded, /RDATE;TZID="UTC";VALUE=DATE:20260905\r\n/);
   assert.match(unfolded, /EXRULE:FREQ=WEEKLY;BYDAY=TU\r\n/);
   assert.match(unfolded, /EXDATE;TZID="UTC";VALUE=DATE:20260907\r\n/);
+});
+
+function makeReminderEvent(overrides: Partial<NormalizedCalendarEvent> = {}): NormalizedCalendarEvent {
+  return {
+    uid: 'timetree:1:e1',
+    calendarName: 'cal',
+    title: '회의',
+    start: { kind: 'date-time', epochMs: Date.UTC(2026, 5, 1, 10, 0, 0), timezone: 'UTC' },
+    end: { kind: 'date-time', epochMs: Date.UTC(2026, 5, 1, 11, 0, 0), timezone: 'UTC' },
+    source: { provider: 'timetree', eventId: 'e1', calendarId: 1 },
+    warnings: [],
+    ...overrides,
+  };
+}
+
+test('VALARM: 단일 30분 전 reminder는 PT30M trigger로 출력된다', () => {
+  const ics = createIcsCalendar([makeReminderEvent({ reminders: [{ minutesBefore: -30 }] })]);
+  assert.match(ics, /BEGIN:VALARM\r\nACTION:DISPLAY\r\nDESCRIPTION:회의\r\nTRIGGER:-PT30M\r\nEND:VALARM/);
+});
+
+test('VALARM: 시간 단위로 떨어지면 PTNH로 변환된다', () => {
+  const ics = createIcsCalendar([makeReminderEvent({ reminders: [{ minutesBefore: -60 }] })]);
+  assert.match(ics, /TRIGGER:-PT1H/);
+  const ics2 = createIcsCalendar([makeReminderEvent({ reminders: [{ minutesBefore: -120 }] })]);
+  assert.match(ics2, /TRIGGER:-PT2H/);
+});
+
+test('VALARM: 일 단위로 떨어지면 PND로 변환된다', () => {
+  const ics = createIcsCalendar([makeReminderEvent({ reminders: [{ minutesBefore: -1440 }] })]);
+  assert.match(ics, /TRIGGER:-P1D/);
+  const ics2 = createIcsCalendar([makeReminderEvent({ reminders: [{ minutesBefore: -2880 }] })]);
+  assert.match(ics2, /TRIGGER:-P2D/);
+});
+
+test('VALARM: 시간/일 단위로 떨어지지 않으면 분 단위 유지', () => {
+  const ics = createIcsCalendar([makeReminderEvent({ reminders: [{ minutesBefore: -90 }] })]);
+  assert.match(ics, /TRIGGER:-PT90M/);
+});
+
+test('VALARM: 다중 reminder는 VALARM block 여러 개 순서대로 출력', () => {
+  const ics = createIcsCalendar([
+    makeReminderEvent({ reminders: [{ minutesBefore: -30 }, { minutesBefore: -1440 }] }),
+  ]);
+  const valarmBlocks = ics.split('BEGIN:VALARM').length - 1;
+  assert.equal(valarmBlocks, 2);
+  const firstIdx = ics.indexOf('TRIGGER:-PT30M');
+  const secondIdx = ics.indexOf('TRIGGER:-P1D');
+  assert.ok(firstIdx >= 0 && secondIdx >= 0 && firstIdx < secondIdx, '순서 보존');
+});
+
+test('VALARM: reminders가 undefined면 VALARM 미출력', () => {
+  const ics = createIcsCalendar([makeReminderEvent({})]);
+  assert.ok(!ics.includes('BEGIN:VALARM'));
+});
+
+test('VALARM: reminders가 빈 배열이면 VALARM 미출력', () => {
+  const ics = createIcsCalendar([makeReminderEvent({ reminders: [] })]);
+  assert.ok(!ics.includes('BEGIN:VALARM'));
+});
+
+test('VALARM: block은 END:VEVENT 바로 앞에 위치한다', () => {
+  const ics = createIcsCalendar([makeReminderEvent({ reminders: [{ minutesBefore: -30 }] })]);
+  assert.match(ics, /END:VALARM\r\nEND:VEVENT/);
+});
+
+test('VALARM: DESCRIPTION에 escapeText 적용 (특수문자 title)', () => {
+  const ics = createIcsCalendar([
+    makeReminderEvent({ title: 'a; b, c\\d', reminders: [{ minutesBefore: -30 }] }),
+  ]);
+  assert.match(ics, /DESCRIPTION:a\\; b\\, c\\\\d\r\nTRIGGER:-PT30M/);
+});
+
+test('VALARM: 음수 정수가 아닌 값은 skip, 유효한 다른 reminder는 출력', () => {
+  const ics = createIcsCalendar([
+    makeReminderEvent({
+      reminders: [
+        { minutesBefore: 0 },          // skip (0)
+        { minutesBefore: 30 },         // skip (양수)
+        { minutesBefore: NaN },        // skip (NaN)
+        { minutesBefore: -10.5 },      // skip (정수 아님)
+        { minutesBefore: -45 },        // emit
+      ],
+    }),
+  ]);
+  const valarmBlocks = ics.split('BEGIN:VALARM').length - 1;
+  assert.equal(valarmBlocks, 1);
+  assert.match(ics, /TRIGGER:-PT45M/);
 });
