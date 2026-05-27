@@ -78,7 +78,7 @@ export function normalizeRawTimeTreeEvent(rawEvent: unknown, context: Normalizat
   const warnings = unique([...collected, ...recurrenceResult.warnings, ...titleWarnings, ...fieldWarnings]);
 
   const value: NormalizedCalendarEvent = {
-    uid: `timetree:${event.calendarId}:${event.id}`,
+    uid: `timetree:${event.calendarId}:${sanitizeUidId(event.id)}`,
     calendarName: context.calendar?.name ?? String(event.calendarId),
     title,
     start: normalizeStart(event),
@@ -118,6 +118,25 @@ function normalizeTitle(title: string, warnings: NormalizationWarning[]): string
 
 // 제어문자(CR/LF 포함)는 ICS line 구조를 깨고, parse 실패하는 URL은 standards
 // client에서 거부될 수 있으므로 drop + warning으로 surface한다.
+// UID를 ASCII printable subset(U+0020..U+007E)으로 정규화한다. 비-ASCII char는
+// UTF-8 byte sequence를 percent-encoding한다. 같은 raw event는 같은 결과를
+//내므로 Google file import의 UID-based dedup이 동작한다.
+// 정책 출처: docs/specs/ics-emit-cross-cutting-checks.md §5.
+function sanitizeUidId(id: string): string {
+  const bytes = new TextEncoder().encode(id);
+  let result = '';
+  for (const byte of bytes) {
+    // ASCII printable 보존. '%' 자체도 보존 — 이미 percent-encode된 입력이
+    // 재import 시에도 동일 UID를 내야 idempotent.
+    if (byte >= 0x20 && byte <= 0x7e) {
+      result += String.fromCharCode(byte);
+    } else {
+      result += `%${byte.toString(16).toUpperCase().padStart(2, '0')}`;
+    }
+  }
+  return result;
+}
+
 function normalizeUrl(url: string | null | undefined): { value?: string; warning?: 'url-invalid' } {
   if (url == null || url === '') return {};
   if (/[\u0000-\u001F\u007F]/.test(url)) return { warning: 'url-invalid' };
