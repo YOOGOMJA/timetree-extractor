@@ -67,3 +67,24 @@ export const missingTimezoneTimedEventFixture: RawTimeTreeEvent = {
   startTimezone: null,
   endTimezone: null,
 };
+
+// Mid-January 시각으로 고정한다 — America/New_York이 EST(-0500)인 구간이라
+// STANDARD-only VTIMEZONE이 자신 있게 동작하는 윈도(no DST 경계 침범).
+export const newYorkTimedEventFixture: RawTimeTreeEvent = {
+  ...timedEventFixture,
+  id: 'event-new-york-1',
+  title: 'Synthetic NYC event',
+  startAt: Date.UTC(2026, 0, 15, 14, 0, 0),
+  startTimezone: 'America/New_York',
+  endAt: Date.UTC(2026, 0, 15, 15, 0, 0),
+  endTimezone: 'America/New_York',
+};
+
+// 75 octet line folding 검증용. SUMMARY는 한글 다수 + ASCII 결합으로
+// UTF-8 byte 길이가 75를 명백히 초과하도록 구성한다. multi-byte continuation
+// 경계에서 잘리지 않아야 한다 (foldLine의 isUtf8ContinuationByte 가드).
+export const longKoreanSummaryEventFixture: RawTimeTreeEvent = {
+  ...timedEventFixture,
+  id: 'event-long-korean-summary-1',
+  title: '한글로 작성된 매우 긴 일정 제목 — 이 라인은 75 octet 한도를 분명히 넘기며 멀티바이트 경계에서 깨지면 안 된다 (RFC 5545 §3.1)',
+};
