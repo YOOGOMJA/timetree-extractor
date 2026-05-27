@@ -8,6 +8,7 @@ export const NORMALIZATION_WARNING_VALUES = [
   'participant-omitted',
   'title-empty',
   'reminder-unsupported',
+  'url-invalid',
 ] as const;
 
 export type NormalizationWarning = (typeof NORMALIZATION_WARNING_VALUES)[number];
@@ -71,7 +72,10 @@ export function normalizeRawTimeTreeEvent(rawEvent: unknown, context: Normalizat
   const recurrence = recurrenceResult.recurrence;
   const titleWarnings: NormalizationWarning[] = [];
   const title = normalizeTitle(event.title, titleWarnings);
-  const warnings = unique([...collected, ...recurrenceResult.warnings, ...titleWarnings]);
+  const urlResult = normalizeUrl(event.url);
+  const fieldWarnings: NormalizationWarning[] = [];
+  if (urlResult.warning) fieldWarnings.push(urlResult.warning);
+  const warnings = unique([...collected, ...recurrenceResult.warnings, ...titleWarnings, ...fieldWarnings]);
 
   const value: NormalizedCalendarEvent = {
     uid: `timetree:${event.calendarId}:${event.id}`,
@@ -89,7 +93,7 @@ export function normalizeRawTimeTreeEvent(rawEvent: unknown, context: Normalizat
 
   if (event.note) value.description = event.note;
   if (event.location) value.location = event.location;
-  if (event.url) value.url = event.url;
+  if (urlResult.value) value.url = urlResult.value;
   if (labels.length > 0) value.labels = labels;
   if (recurrence) value.recurrence = recurrence;
 
@@ -110,6 +114,19 @@ function normalizeTitle(title: string, warnings: NormalizationWarning[]): string
   if (title.trim() !== '') return title;
   warnings.push('title-empty');
   return '(untitled TimeTree event)';
+}
+
+// 제어문자(CR/LF 포함)는 ICS line 구조를 깨고, parse 실패하는 URL은 standards
+// client에서 거부될 수 있으므로 drop + warning으로 surface한다.
+function normalizeUrl(url: string | null | undefined): { value?: string; warning?: 'url-invalid' } {
+  if (url == null || url === '') return {};
+  if (/[\u0000-\u001F\u007F]/.test(url)) return { warning: 'url-invalid' };
+  try {
+    new URL(url);
+    return { value: url };
+  } catch {
+    return { warning: 'url-invalid' };
+  }
 }
 
 function collectWarnings(event: RawTimeTreeEvent): NormalizationWarning[] {
