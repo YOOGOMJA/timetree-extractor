@@ -111,7 +111,7 @@ Summary: P0 N건 / P1 M건 / P2 K건
 
 호출자(`/review ICS emitter` 등)는 다음을 main agent가 직접 수행한 뒤 본 subagent를 띄운다.
 
-1. `npm test -- node --test dist/test/core/ics-emit.conformance.test.js` 실행. 통과해야 본 reviewer 진입.
+1. `npm run build && node --test dist/test/core/ics-emit.conformance.test.js` 실행 (전체 검증은 `npm test`). 통과해야 본 reviewer 진입.
 2. 본 subagent에 다음을 명시: 변경 파일 목록 (없으면 전체 직렬화 경계), 직전 RED baseline 경로, 결과 저장 경로.
 3. 본 subagent의 결과를 받으면 main agent가 대화창에 5줄 이내 요약(`P0 X / P1 Y / P2 Z` + 상위 3건 file:line + 전체 리포트 경로)을 출력.
 

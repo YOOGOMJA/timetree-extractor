@@ -29,7 +29,7 @@
 ```
 .claude/agents/ics-emitter-reviewer.md      # 판단 영역 reviewer subagent 정의
 test/core/ics-emit.conformance.test.ts      # 기계 검증 conformance test
-docs/references/ics-emit-review-guide.md    # cross-cutting reference (기존 spec 보완)
+docs/specs/ics-emit-cross-cutting-checks.md # cross-cutting reference (기존 spec 보완)
 ```
 
 `docs/reviews/YYYY-MM-DD-ics-emitter.md`(리뷰 결과)는 호출 시점에 생성되며, 산출물 자체는 아니다.
@@ -90,7 +90,7 @@ Fixture는 다음을 포함한다.
 
 ## 3. Cross-cutting reference
 
-`docs/references/ics-emit-review-guide.md`. 기존 spec이 다루지 않는 cross-cutting 영역만 모은다 — 단 reviewer subagent가 자기 prompt 안에서 직접 인용할 수 있도록 짧게.
+`docs/specs/ics-emit-cross-cutting-checks.md`. 기존 spec이 다루지 않는 cross-cutting 영역만 모은다 — 단 reviewer subagent가 자기 prompt 안에서 직접 인용할 수 있도록 짧게.
 
 수록 내용:
 
@@ -112,7 +112,7 @@ review ICS emitter
 
 main agent는 다음을 순차로 한다.
 
-1. `npm test -- --test-only test/core/ics-emit.conformance.test.ts`(또는 동등)로 conformance test 실행. fail이면 그 결과를 1차 report로 사용하고 subagent를 띄울지 사용자에게 묻는다.
+1. `npm run build && node --test dist/test/core/ics-emit.conformance.test.js`로 conformance test 실행 (전체는 `npm test`). fail이면 그 결과를 1차 report로 사용하고 subagent를 띄울지 사용자에게 묻는다.
 2. 통과하면 `.claude/agents/ics-emitter-reviewer.md` subagent를 띄워 판단 영역 review.
 3. 두 결과를 `docs/reviews/YYYY-MM-DD-ics-emitter.md`로 합치고, 대화창에는 5줄 이내 요약을 출력한다.
 
