@@ -18,6 +18,11 @@
 - payload에 `events` array가 없거나 malformed recurrence가 있으면 조용히 빈 결과로 처리하지 않고 실패한다.
 - internal API surface 사용은 `internal-api-surface` warning으로 남긴다.
 
+## 빌드 산출물
+
+- Content-script(`src/extension/content-script.ts`)와 sidepanel(`src/extension/sidepanel.tsx`)은 **모두 esbuild로 IIFE 번들**(`dist/src/extension/content-script.bundle.js`, `dist/src/extension/sidepanel.bundle.js`)로 묶는다. MV3 sidepanel은 `<script type="module">` 직접 로드 대신 IIFE 번들 참조로 통일 — 외부 의존(`preact` 등) 추가 시 ESM bare specifier 해소 문제를 회피하기 위함. 결정 근거와 거부된 대안(importmap + web_accessible_resources, ESM 번들, Preact 철회, 별도 bundler 도입)은 `docs/decisions/0005-sidepanel-iife-bundle.md` 참조.
+- Background service worker(`src/extension/background.js`)는 manifest `"type": "module"` 선언으로 **ESM 그대로 유지**한다(상대 경로 import만 사용, bare specifier 없음). 외부 npm dep가 들어오는 시점에 별도 결정.
+
 ## 아직 하지 않는 것
 
 - Chrome extension manifest 작성
