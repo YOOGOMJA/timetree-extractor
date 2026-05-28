@@ -10,5 +10,9 @@
 .claude/*
 !.claude/agents/
 !.claude/agents/**
+!.claude/skills/
+!.claude/skills/**
 node_modules/
 dist/
+_workspace/
+_workspace_prev_*/
