@@ -1,3 +1,4 @@
+import { render } from 'preact';
 import { normalizeRawTimeTreeEvent } from '../core/normalize.js';
 import type { RawTimeTreeCalendar, RawTimeTreeEvent, RawTimeTreeLabel } from '../core/contracts.js';
 import type { NormalizedCalendarEvent } from '../core/normalize.js';
@@ -14,6 +15,8 @@ import {
   aggregateWarnings,
   decideExport,
 } from './sidepanel-export-policy.js';
+import { CalendarList } from './components/CalendarList.js';
+import { EventPreviewList } from './components/EventPreviewList.js';
 
 async function sendToContentScript<T>(request: ExtensionRequest): Promise<T> {
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
@@ -58,34 +61,36 @@ function formatEventDate(event: NormalizedCalendarEvent): string {
 }
 
 let loadedCalendars: RawTimeTreeCalendar[] = [];
+// 캘린더 선택은 이전엔 DOM(`input:checked`)을 source of truth로 사용했으나, Preact
+// 마이그레이션 1단계로 module-level Set이 source of truth가 된다. 다음 모듈에서
+// `<SidePanelApp>`으로 hoist 시 컴포넌트 state로 흡수될 예정.
+let selectedCalendarIds: Set<number> = new Set();
+
+function rerenderCalendarList(): void {
+  const container = document.getElementById('calendar-list');
+  if (!container) return;
+  render(
+    <CalendarList
+      calendars={loadedCalendars}
+      selected={selectedCalendarIds}
+      onToggle={(id, next) => {
+        if (next) selectedCalendarIds.add(id);
+        else selectedCalendarIds.delete(id);
+        rerenderCalendarList();
+      }}
+    />,
+    container,
+  );
+}
 
 function renderCalendarList(calendars: RawTimeTreeCalendar[]): void {
-  const container = document.getElementById('calendar-list')!;
-  container.innerHTML = '';
-  for (const cal of calendars) {
-    const div = document.createElement('div');
-    div.className = 'calendar-item';
-
-    const checkbox = document.createElement('input');
-    checkbox.type = 'checkbox';
-    checkbox.id = `cal-${cal.id}`;
-    checkbox.value = String(cal.id);
-    checkbox.checked = true;
-
-    const label = document.createElement('label');
-    label.htmlFor = `cal-${cal.id}`;
-    label.textContent = cal.name;
-
-    div.appendChild(checkbox);
-    div.appendChild(label);
-    container.appendChild(div);
-  }
+  // 기존 동작 보존: 캘린더 로드 직후 전부 checked. 이후 토글은 selectedCalendarIds로 추적.
+  selectedCalendarIds = new Set(calendars.map((c) => c.id));
+  rerenderCalendarList();
 }
 
 function getSelectedCalendarIds(): number[] {
-  return Array.from(
-    document.querySelectorAll<HTMLInputElement>('#calendar-list input[type="checkbox"]:checked'),
-  ).map((el) => Number(el.value));
+  return Array.from(selectedCalendarIds);
 }
 
 function renderResults(
@@ -115,19 +120,12 @@ function renderResults(
 
   const preview = document.getElementById('event-preview')!;
   const sample = events.slice(0, 20);
-  if (sample.length === 0) {
-    preview.innerHTML = '<p style="color:#6b7280">이벤트가 없습니다.</p>';
-  } else {
-    preview.innerHTML = sample
-      .map(
-        (ev) => `
-        <div class="event-item">
-          <div class="title">${escapeHtml(ev.title)}</div>
-          <div class="date">${escapeHtml(formatEventDate(ev))} · ${escapeHtml(ev.calendarName)}</div>
-        </div>`,
-      )
-      .join('');
-  }
+  // Preact `<EventPreviewList>` 로 점진 대체. 시그니처/호출 시점/슬라이스 상한 모두 보존.
+  // 0건 placeholder 분기는 컴포넌트 내부로 이동.
+  render(
+    <EventPreviewList events={sample} formatDate={formatEventDate} />,
+    preview,
+  );
 
   showState('results');
 }
