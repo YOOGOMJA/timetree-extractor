@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import {
+  alertEventFixture,
   allDayEventFixture,
   calendarFixture,
   labelsFixture,
@@ -215,6 +216,92 @@ test('warns when participant and attachment data are intentionally omitted', () 
   assert.equal(result.ok, true);
   assert.equal(result.value.warnings.includes('participant-omitted'), true);
   assert.equal(result.value.warnings.includes('attachment-omitted'), true);
+});
+
+test('valid한 alert(음수 정수 minutesBefore)는 reminder로 변환된다 (#41)', () => {
+  const result = normalizeRawTimeTreeEvent(alertEventFixture, {
+    calendar: calendarFixture,
+    labels: labelsFixture,
+  });
+  assert.equal(result.ok, true);
+  assert.deepEqual(result.value.reminders, [{ minutesBefore: -30 }]);
+  assert.equal(result.value.warnings.includes('reminder-unsupported'), false);
+});
+
+test('인식 불가 shape의 alert는 silent drop되지 않고 reminder-unsupported warning이다 (#41)', () => {
+  const result = normalizeRawTimeTreeEvent({
+    ...timedEventFixture,
+    alerts: [{ offset: -10 }, 5, 'PT10M'],
+  }, { calendar: calendarFixture, labels: labelsFixture });
+  assert.equal(result.ok, true);
+  assert.equal(result.value.reminders, undefined);
+  assert.equal(result.value.warnings.includes('reminder-unsupported'), true);
+});
+
+test('빈/누락 alerts는 reminder도 warning도 만들지 않는다 (회귀 방지, #41)', () => {
+  const empty = normalizeRawTimeTreeEvent(timedEventFixture, {
+    calendar: calendarFixture,
+    labels: labelsFixture,
+  });
+  assert.equal(empty.ok, true);
+  assert.equal(empty.value.reminders, undefined);
+  assert.equal(empty.value.warnings.includes('reminder-unsupported'), false);
+
+  const missing = normalizeRawTimeTreeEvent({ ...timedEventFixture, alerts: undefined }, {
+    calendar: calendarFixture,
+    labels: labelsFixture,
+  });
+  assert.equal(missing.ok, true);
+  assert.equal(missing.value.reminders, undefined);
+  assert.equal(missing.value.warnings.includes('reminder-unsupported'), false);
+});
+
+test('음수 정수가 아닌 minutesBefore(0/양수/소수/NaN)는 reminder-unsupported warning이다 (#41)', () => {
+  for (const bad of [0, 30, -1.5, Number.NaN]) {
+    const result = normalizeRawTimeTreeEvent({
+      ...timedEventFixture,
+      alerts: [{ minutesBefore: bad }],
+    }, { calendar: calendarFixture, labels: labelsFixture });
+    assert.equal(result.ok, true, `minutesBefore=${bad} should normalize ok`);
+    assert.equal(result.value.reminders, undefined, `minutesBefore=${bad} must not emit reminder`);
+    assert.equal(
+      result.value.warnings.includes('reminder-unsupported'),
+      true,
+      `minutesBefore=${bad} must warn reminder-unsupported`,
+    );
+  }
+});
+
+test('valid + invalid alert 혼재 시 valid는 변환하고 invalid는 warning으로 surface한다 (#41)', () => {
+  const result = normalizeRawTimeTreeEvent({
+    ...timedEventFixture,
+    alerts: [{ minutesBefore: -60 }, { minutesBefore: 15 }],
+  }, { calendar: calendarFixture, labels: labelsFixture });
+  assert.equal(result.ok, true);
+  assert.deepEqual(result.value.reminders, [{ minutesBefore: -60 }]);
+  assert.equal(result.value.warnings.includes('reminder-unsupported'), true);
+});
+
+test('같은 minutesBefore 중복 alert는 reminder 1개로 dedup된다 (#41 P1)', () => {
+  const result = normalizeRawTimeTreeEvent({
+    ...timedEventFixture,
+    alerts: [{ minutesBefore: -30 }, { minutesBefore: -30 }, { minutesBefore: -30 }],
+  }, { calendar: calendarFixture, labels: labelsFixture });
+  assert.equal(result.ok, true);
+  assert.deepEqual(result.value.reminders, [{ minutesBefore: -30 }]);
+  assert.equal(result.value.warnings.includes('reminder-unsupported'), false);
+});
+
+test('cap(10) 초과 valid alert는 cap개로 잘리고 reminder-unsupported로 surface된다 (#41 P1)', () => {
+  // 11개의 서로 다른(=dedup 후에도 11개) valid 음수 정수 minutesBefore.
+  const alerts = Array.from({ length: 11 }, (_, i) => ({ minutesBefore: -(i + 1) }));
+  const result = normalizeRawTimeTreeEvent({
+    ...timedEventFixture,
+    alerts,
+  }, { calendar: calendarFixture, labels: labelsFixture });
+  assert.equal(result.ok, true);
+  assert.equal(result.value.reminders?.length, 10);
+  assert.equal(result.value.warnings.includes('reminder-unsupported'), true);
 });
 
 test('NORMALIZATION_WARNING_VALUES는 reminder-unsupported를 포함한다', () => {
