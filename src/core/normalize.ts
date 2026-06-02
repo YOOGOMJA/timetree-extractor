@@ -83,7 +83,14 @@ export function normalizeRawTimeTreeEvent(rawEvent: unknown, context: Normalizat
   const urlResult = normalizeUrl(event.url);
   const fieldWarnings: NormalizationWarning[] = [];
   if (urlResult.warning) fieldWarnings.push(urlResult.warning);
-  const warnings = unique([...collected, ...recurrenceResult.warnings, ...titleWarnings, ...fieldWarnings]);
+  const alertResult = normalizeAlerts(event.alerts);
+  const warnings = unique([
+    ...collected,
+    ...recurrenceResult.warnings,
+    ...titleWarnings,
+    ...fieldWarnings,
+    ...alertResult.warnings,
+  ]);
 
   const value: NormalizedCalendarEvent = {
     uid: `timetree:${event.calendarId}:${sanitizeUidId(event.id)}`,
@@ -104,6 +111,7 @@ export function normalizeRawTimeTreeEvent(rawEvent: unknown, context: Normalizat
   if (urlResult.value) value.url = urlResult.value;
   if (labels.length > 0) value.labels = labels;
   if (recurrence) value.recurrence = recurrence;
+  if (alertResult.reminders.length > 0) value.reminders = alertResult.reminders;
 
   return { ok: true, value, issues: [] };
 }
@@ -163,6 +171,89 @@ function normalizeUrl(url: string | null | undefined): { value?: string; warning
   } catch {
     return { warning: 'url-invalid' };
   }
+}
+
+// raw `alerts`를 VALARM 대상 reminder timing으로 변환한다.
+//
+// 정책 (privacy / data-minimization): NormalizedReminder는 `minutesBefore`
+// (이벤트 시작 기준 음수 분) *만* 싣는다. raw alert payload는 절대 밖으로
+// 내보내지 않는다. 출처: v1-export-policy.md L15/L32.
+//
+// shape 인식 규칙 — TimeTree alert의 실제 wire shape가 아직 미확정(#15)이므로
+// 보수적으로만 인식한다. **silent drop은 절대 금지**: 인식 못 한 alert는 반드시
+// `reminder-unsupported` warning을 push해 누락을 사용자에게 surface한다.
+// (출처: ics-normalization-contract.md "reminder-unsupported",
+//  google-calendar-import-field-compat.md "alerts → VALARM".)
+//
+// - alert가 object이고 숫자 `minutesBefore` 필드를 가질 때만 그 값을 reminder로
+//   채택한다. 그 외(원시값, 배열, 숫자 필드 부재, 복수의 모호한 숫자 필드 등)는
+//   추측해서 변환하지 않고 `reminder-unsupported`로 보수 처리한다 — 잘못된
+//   데이터를 만드는 것보다 누락을 surface하는 게 정책상 옳다.
+// - 채택한 `minutesBefore`가 음수 정수가 아니면(0/양수/소수/NaN) reminder로 emit
+//   하지 않고 `reminder-unsupported`를 push한다. ICS writer 단(formatTriggerOffset)도
+//   동일 값을 skip하지만, "왜 누락됐는지"를 warning으로 알리는 책임은 normalize에
+//   있다 (ics-normalization-contract.md L55 / google-calendar-import-field-compat.md).
+// - 양수("N분 전" 의미)를 음수로 부호 변환하는 가정은 raw shape가 확정되기 전까지
+//   하지 않는다. 잘못된 부호로 시각이 어긋난 reminder를 만드는 위험을 피하고
+//   warning으로 surface한다. 실제 shape는 #15 smoke로 확정 후 재검토한다.
+// reminder(=VALARM) 개수 상한. 정상 이벤트의 alert 수는 한 자릿수이며, Google/Apple
+// import 모두 소수의 VALARM만 기대한다. 비정상 다중 alert(중복/봇 생성 등) 시 VALARM이
+// 무제한 팽창하는 것을 막는 방어선이다. 초과분은 버리되 silent하지 않고
+// `reminder-unsupported` warning으로 surface한다 (silent data loss 금지 정책).
+// recurrence 처리가 unsupported rule을 unique() warning으로 surface하는 패턴과 일관.
+const MAX_REMINDERS = 10;
+
+function normalizeAlerts(alerts: unknown[] | undefined): {
+  reminders: NormalizedReminder[];
+  warnings: NormalizationWarning[];
+} {
+  if (!Array.isArray(alerts) || alerts.length === 0) {
+    return { reminders: [], warnings: [] };
+  }
+
+  const warnings: NormalizationWarning[] = [];
+  // minutesBefore 값 기준 dedup. NormalizedReminder는 객체라 unique<T>()의 Set
+  // 참조 비교로는 dedup되지 않으므로 값 기반 Set으로 중복 분 오프셋을 1개로 합친다.
+  const seen = new Set<number>();
+  const reminders: NormalizedReminder[] = [];
+
+  for (const alert of alerts) {
+    const minutesBefore = extractMinutesBefore(alert);
+    if (minutesBefore === undefined) {
+      // 인식 불가 shape — 추측하지 않고 누락을 surface.
+      warnings.push('reminder-unsupported');
+      continue;
+    }
+    if (!Number.isInteger(minutesBefore) || minutesBefore >= 0) {
+      // 음수 정수가 아닌 trigger는 VALARM 대상이 아니다 (emit 단 skip 대상).
+      warnings.push('reminder-unsupported');
+      continue;
+    }
+    if (seen.has(minutesBefore)) {
+      // 같은 분 오프셋 reminder 중복 — 1개로 합친다 (VALARM 중복 emit 방지).
+      continue;
+    }
+    seen.add(minutesBefore);
+    reminders.push({ minutesBefore });
+  }
+
+  if (reminders.length > MAX_REMINDERS) {
+    // cap 초과분은 버리되 누락을 surface한다 (silent drop 금지).
+    reminders.length = MAX_REMINDERS;
+    warnings.push('reminder-unsupported');
+  }
+
+  return { reminders, warnings };
+}
+
+// alert object에서 분 오프셋 후보를 보수적으로 추출한다. 명시적 숫자
+// `minutesBefore` 필드만 신뢰하고, 그 외에는 undefined를 돌려 호출부가
+// `reminder-unsupported`로 처리하게 한다.
+function extractMinutesBefore(alert: unknown): number | undefined {
+  if (alert == null || typeof alert !== 'object' || Array.isArray(alert)) return undefined;
+  const record = alert as Record<string, unknown>;
+  if (typeof record.minutesBefore === 'number') return record.minutesBefore;
+  return undefined;
 }
 
 function collectWarnings(event: RawTimeTreeEvent): NormalizationWarning[] {

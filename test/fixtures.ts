@@ -80,6 +80,15 @@ export const newYorkTimedEventFixture: RawTimeTreeEvent = {
   endTimezone: 'America/New_York',
 };
 
+// alert → reminder normalize 검증용 (#41). 보수적 인식: object + 숫자
+// minutesBefore 필드 = valid. minutesBefore는 이벤트 시작 기준 음수 분.
+export const alertEventFixture: RawTimeTreeEvent = {
+  ...timedEventFixture,
+  id: 'event-alert-1',
+  title: 'Synthetic alert event',
+  alerts: [{ minutesBefore: -30 }],
+};
+
 // 75 octet line folding 검증용. SUMMARY는 한글 다수 + ASCII 결합으로
 // UTF-8 byte 길이가 75를 명백히 초과하도록 구성한다. multi-byte continuation
 // 경계에서 잘리지 않아야 한다 (foldLine의 isUtf8ContinuationByte 가드).
