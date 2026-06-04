@@ -19,7 +19,7 @@ Uncaught TypeError: Failed to resolve module specifier "preact".
 Relative references must start with either "/", "./", or "../".
 ```
 
-`npm run build`와 `node --test`는 Node의 ESM resolver가 `node_modules`를 자동으로 보기 때문에 통과하지만, 그것이 Chrome 런타임 안전을 보장하지 못한다는 점이 verifier `verify_p3_preact_calendarlist.md` §6.3 P0의 핵심이었다.
+`npm run build`와 `node --test`는 Node의 ESM resolver가 `node_modules`를 자동으로 보기 때문에 통과하지만, 그것이 Chrome 런타임 안전을 보장하지 못한다는 점이 P3 Preact 마이그레이션 당시 발견된 P0 이슈의 핵심이었다.
 
 이 결정은 그 P0 fix의 사후 정리다 — *코드 변경은 이미 완료됐고*, 본 문서는 결정 자체와 거부된 대안을 보존한다.
 
@@ -68,7 +68,7 @@ Relative references must start with either "/", "./", or "../".
 
 기각한다.
 
-- ux-designer §8.2의 Preact 마이그레이션 결정 자체와 충돌. P3에서 `<CalendarList>` 1차 마이그레이션이 이미 완료됐고, 후속 모듈(`<EventPreviewList>`, `<WarningList>`, `<StatsTable>`)이 그 위에 쌓이는 구조다.
+- 이미 채택된 Preact 마이그레이션 방향과 충돌. P3에서 `<CalendarList>` 1차 마이그레이션이 이미 완료됐고, 후속 모듈(`<EventPreviewList>`, `<WarningList>`, `<StatsTable>`)이 그 위에 쌓이는 구조다.
 - 회귀 시 약점 #1(`escapeHtml` 수동 호출 누락 risk)이 부활한다.
 
 ### D. sidepanel만 별도 bundler(예: Vite, Rollup) 도입
@@ -119,15 +119,15 @@ Relative references must start with either "/", "./", or "../".
 
 ## 결과
 
-이번 결정으로 verifier `verify_p3_p0_fix.md` §5의 P1 spec drift가 해소된다. P3 P0 fix(이미 적용됨)의 결정 본체가 archeology에 보존되어, 이후 sidepanel 빌드 파이프라인을 손대는 에이전트가 "왜 IIFE인가, importmap은 왜 안 됐나"를 다시 탐색하지 않아도 된다.
+이번 결정으로 P3 P0 fix 당시 발견된 P1 spec drift가 해소된다. P3 P0 fix(이미 적용됨)의 결정 본체가 archeology에 보존되어, 이후 sidepanel 빌드 파이프라인을 손대는 사람이 "왜 IIFE인가, importmap은 왜 안 됐나"를 다시 탐색하지 않아도 된다.
 
 Constraint: MV3 sidepanel의 native ES module loader는 bare specifier를 해소하지 못한다
 Rejected: Import map + web_accessible_resources | MV3 sidepanel에서 검증 부재 + manifest 표면 확장
 Rejected: ESM 번들(`--format=esm`) | IIFE 대비 이점 없음 + content-script와 일관성 깨짐
-Rejected: Preact 철회 vanilla 회귀 | ux-designer Preact 마이그레이션 결정과 충돌
+Rejected: Preact 철회 vanilla 회귀 | 채택된 Preact 마이그레이션 방향과 충돌
 Rejected: 별도 bundler(Vite/Rollup) 도입 | build pipeline 도구 중복 + contract-first 원칙 위배
 Confidence: high
 Scope-risk: narrow
 Directive: sidepanel을 `<script type="module">`로 로드하지 말 것; bundle:sidepanel과 bundle:content-script의 format/target을 분기시키지 말 것
-Tested: build PASS, typecheck PASS, 200/200 tests PASS, bundle head IIFE 확인, bare specifier 0건 (verify_p3_p0_fix.md §6.3 (a)-(e))
-Not-tested: Chrome `chrome://extensions` Load unpacked manual smoke (자동 검증 환경 부재 — 메인 에이전트 권고로 1회 수행 예정)
+Tested: build PASS, typecheck PASS, 200/200 tests PASS, bundle head IIFE 확인, bare specifier 0건
+Not-tested: Chrome `chrome://extensions` Load unpacked manual smoke (자동 검증 환경 부재 — 수동 1회 수행 필요)
