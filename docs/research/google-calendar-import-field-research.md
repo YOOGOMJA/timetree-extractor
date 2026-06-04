@@ -6,7 +6,8 @@
 
 ## 확인일
 
-- 2026-05-25
+- 2026-05-25 (공개 source 기반 조사)
+- 2026-06-04 (실제 import round-trip 검증 — 아래 "실제 import 검증" 참조)
 
 ## 조사 방법과 한계
 
@@ -24,6 +25,24 @@
 
 (UTF-8/CRLF/75-octet folding 요구와 ~1MB 파일 크기 한계는 confidence가 med/med-high라 아래 매트릭스·"미검증" 목록에서 다룬다 — 확정 사실로 단정하지 않는다.)
 
+## 실제 import 검증 (2026-06-04)
+
+방법: 실제 TimeTree export(`.ics`, 253 VEVENT)를 Google Calendar 웹 import → Google Calendar API로 read-back해 저장 결과를 round-trip 대조. 단일 실계정 1회, **API read-back = 저장 상태** 기준이므로 UI 표시 세부(autolink 등)는 별도 확인 대상이다. (issue #15)
+
+경험적으로 확인된 사실:
+
+- **UID dedup**: export에 동일 UID 2건이 섞여 있었고(별도 exporter 버그 #52), Google이 iCalUID로 **각각 1개만** 등록 → UID 기반 dedup 동작 확인.
+- **all-day DTEND exclusive**: 1일/2일 종일 이벤트가 `DTEND = DTSTART + N`로 정확히 N일 배너 → off-by-one 없음.
+- **TZID(IANA) 시각 보존**: `TZID=Asia/Seoul` timed event가 KST wall-time 그대로 저장. (비IANA TZID는 여전히 미검증)
+- **RRULE 반복 series**: `FREQ=MONTHLY`(+`UNTIL`)가 별도 단발이 아니라 **master 연결 series**(`recurringEventId`)로 전개. `UNTIL` 경계도 정확.
+- **RDATE 반복**: RDATE 날짜들이 series instance로 전개·연결(조회 창 내). → 매트릭스 confidence med→high로 승격.
+- **이벤트 누락 0건**: 253 source 이벤트가 모두 Google에 존재(반복 전개분 제외 1:1).
+
+이번 export로 검증하지 못한 것:
+
+- **VALARM**: 이 export는 VALARM이 0건이라 honor / secondary-drop을 **검증 불가**. Google에 보인 30분 알림은 우리 emit이 아니라 **import 기본 알림**이었다(API read-back에서 `overrideReminders` = calendar 기본값).
+- DESCRIPTION autolink/HTML literal, STATUS/CLASS/TRANSP UI 반영, `RECURRENCE-ID`(미emit, #14), 비IANA TZID fallback, line folding strictness, ~1MB/event-count 한계 — 여전히 미검증.
+
 ## VEVENT property별 honor 매트릭스
 
 honor 표기: **yes** = UI에 노출 / **parsed-ignored** = 읽지만 안 보임 / **breaks** = 파일 import 실패 유발.
@@ -38,7 +57,7 @@ honor 표기: **yes** = UI에 노출 / **parsed-ignored** = 읽지만 안 보임
 | all-day `;VALUE=DATE` | yes | 종일 배너 | DTEND **exclusive**(start+1). off-by-one 주의. 둘 다 `VALUE=DATE` | high |
 | `DTSTART/DTEND` UTC(`Z`) | yes | 뷰어 zone으로 변환 | timed event에서 cross-client 가장 안전. floating(Z·TZID 없음)은 **import 사용자 zone**으로 해석 | high |
 | `RRULE` | yes | 반복 series | `UNTIL`은 DTSTART가 zoned/UTC면 **UTC(`...Z`)** 여야 함. 불일치 시 파일 깨질 수 있음 | high |
-| `RDATE` | yes(parsed) | 추가 instance | RRULE보다 덜 검증됨, 대체로 honor | med |
+| `RDATE` | yes | 추가 instance | 2026-06-04 import으로 series instance 전개·연결 확인(조회 창 내) | high |
 | `EXDATE` | yes | instance 제거 | 반복 instance의 시각/zone과 정확히 일치해야 취소됨 | med |
 | `EXRULE` | parsed-ignored / 위험 | — | RFC 5545 deprecated. **emit 금지** | med |
 | `RECURRENCE-ID` | yes(조건부) | 수정된 단일 instance | master VEVENT가 **같은 파일에 있고 UID 동일**할 때만. 단독이면 별 단발 event | med |
@@ -65,12 +84,13 @@ honor 표기: **yes** = UI에 노출 / **parsed-ignored** = 읽지만 안 보임
 
 ## 미검증 — 수동 import smoke로 확인 필요
 
-다음은 confidence가 med 이하라 spec에서 "확정"으로 쓰기 전 실제 Google import 테스트가 필요하다:
+다음은 confidence가 med 이하라 spec에서 "확정"으로 쓰기 전 실제 Google import 테스트가 필요하다 (2026-06-04 round-trip에서 확인된 항목은 위 "실제 import 검증" 섹션으로 이동):
 
 - `DESCRIPTION`의 bare-URL autolink / HTML literal 처리
-- `VALARM`이 secondary calendar import에서 드롭되는지 (2026 기준 재확인)
+- `VALARM`이 secondary calendar import에서 드롭되는지 (2026 기준 재확인 — 2026-06-04 export는 VALARM 0건이라 미검증 유지)
 - `STATUS:TENTATIVE` / `CLASS` / `TRANSP`의 UI 반영
-- `RDATE`/`RECURRENCE-ID` 동작
+- `RECURRENCE-ID` 동작 (현재 미emit, #14)
+- 비IANA `TZID`(예: `KST`)의 fallback 시각 오류
 - line folding strictness와 ~1MB/event-count 한계의 실제 임계
 
 ## Sources
