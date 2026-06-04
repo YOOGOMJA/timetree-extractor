@@ -71,6 +71,8 @@ export function mapApiEventToRawTimeTreeEvent(apiEvent: ApiEvent): RawTimeTreeEv
     note: optionalNullableString(apiEvent.note),
     recurrences: stringArray(apiEvent.recurrences),
     recurringUuid: optionalNullableString(apiEvent.recurring_uuid),
+    recurStartAt: optionalNullableNumber(apiEvent.recur_start_at),
+    recurEndAt: optionalNullableNumber(apiEvent.recur_end_at),
     alerts: arrayOrEmpty(apiEvent.alerts),
     attendees,
     attachment,

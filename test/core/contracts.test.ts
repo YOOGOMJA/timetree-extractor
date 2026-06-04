@@ -41,6 +41,29 @@ test('requires recurrence values to be strings', () => {
   assert.match(result.issues.join('\n'), /recurrences\[1\]/);
 });
 
+test('captures optional recurStartAt/recurEndAt for modified recurring instances', () => {
+  const result = validateRawTimeTreeEvent({
+    ...weeklyRecurringEventFixture,
+    recurStartAt: 1_767_000_000_000,
+    recurEndAt: 1_767_003_600_000,
+  });
+
+  assert.equal(result.ok, true);
+  assert.deepEqual(result.issues, []);
+  assert.equal(result.value.recurStartAt, 1_767_000_000_000);
+  assert.equal(result.value.recurEndAt, 1_767_003_600_000);
+});
+
+test('rejects a non-number recurStartAt', () => {
+  const result = validateRawTimeTreeEvent({
+    ...weeklyRecurringEventFixture,
+    recurStartAt: 'nope',
+  });
+
+  assert.equal(result.ok, false);
+  assert.match(result.issues.join('\n'), /recurStartAt/);
+});
+
 test('accepts label metadata used for event label normalization', () => {
   const result = validateRawTimeTreeLabel({
     id: 10,
