@@ -108,6 +108,38 @@ test('deduplicates an event that overlaps at a page boundary', async () => {
   assert.equal(ids.filter((id) => id === 'b').length, 1);
 });
 
+test('dedup does not mask a stuck cursor (still aborts on non-advancing cursor)', async () => {
+  // 이미 본 이벤트만 계속 돌려주며 커서가 전진하지 않으면, dedup이 그 이벤트를
+  // 걸러내더라도 stuck-cursor 가드가 살아 있어 무한루프 대신 중단해야 한다.
+  let calls = 0;
+  const result = await extractCalendarEvents({
+    calendarId: 1,
+    fetchJson: async () => {
+      calls += 1;
+      if (calls === 1) return { events: [makeEvent('a')], chunk: true, since: 10 };
+      return { events: [makeEvent('a')], chunk: true, since: 10 }; // 같은 event, 커서 정지
+    },
+  });
+  assert.equal(result.ok, false);
+  assert.match(result.issues.join('\n'), /cursor did not advance/);
+});
+
+test('deduplicates the boundary event across three overlapping pages', async () => {
+  let calls = 0;
+  const result = await extractCalendarEvents({
+    calendarId: 1,
+    fetchJson: async () => {
+      calls += 1;
+      if (calls === 1) return { events: [makeEvent('a'), makeEvent('b')], chunk: true, since: 10 };
+      if (calls === 2) return { events: [makeEvent('b'), makeEvent('c')], chunk: true, since: 20 };
+      return { events: [makeEvent('c'), makeEvent('d')], chunk: false, since: 30 };
+    },
+  });
+  assert.equal(result.ok, true);
+  assert.deepEqual(result.events.map((e) => e.id), ['a', 'b', 'c', 'd']);
+  assert.equal(result.lastCursor, 30);
+});
+
 test('module is re-exported from src/browser barrel', async () => {
   const mod = await import('../../src/browser/index.js');
   assert.equal(typeof mod.extractCalendarEvents, 'function');
