@@ -67,19 +67,3 @@ These are policy guardrails from `docs/specs/privacy-and-local-only-boundary.md`
 
 - The `check-plan-files` GitHub workflow comments on PRs that include files under `docs/superpowers/plans/**`. Those are scratch implementation plans — delete them from the branch before merging to `main`.
 - `dist/` and `.omx/` are gitignored. Most of `.codex/` is gitignored except curated `agents/`, `skills/`, and `prompts/` subdirectories. `.claude/` follows the same pattern — only `.claude/agents/` and `.claude/skills/` are tracked.
-- `_workspace/` (그리고 백업본 `_workspace_prev_*/`)는 하네스 실행 시 메인이 만드는 중간 산출물 저장소이며 gitignored.
-
-## 하네스: TimeTree Extractor implementation
-
-**목표:** 기능 추가/변경/구현 요청을 디자인 → contract → 구현 → 검증의 5단계로 일관 실행한다. ux-designer / contract-designer / core-implementer / extension-implementer / verifier 5개 서브에이전트를 메인이 오케스트레이트한다.
-
-**트리거:** "구현해줘 / 추가해줘 / 만들어줘 / 수정해줘 / 보완해줘", "UI / 화면 / 디자인 / sidepanel / 버튼", "새 필드 / spec / contract / decision / warning enum", "normalize / ics emit / MV3 / manifest" 등의 *작업 요청*에는 `feature-build` 스킬을 사용한다. 단순 정보 질문(어디 정의돼 있어, 왜 이래)은 직접 응답 가능. 자세한 운영 규칙은 `.claude/skills/feature-build/SKILL.md`.
-
-**구성:** 에이전트 정의 6개 (`.claude/agents/{ux-designer,contract-designer,core-implementer,extension-implementer,verifier,ics-emitter-reviewer}.md`) + 오케스트레이터 스킬 1개 (`.claude/skills/feature-build/SKILL.md`). integrator(리더) 역할은 메인 에이전트가 스킬 실행 시 수행.
-
-**환경 제약:** Claude Code 환경에서 `TeamCreate` 미지원 → 서브 에이전트 모드 + `_workspace/` 파일 기반 통신으로 운영.
-
-**변경 이력:**
-| 날짜 | 변경 내용 | 대상 | 사유 |
-|------|----------|------|------|
-| 2026-05-28 | 초기 구성 | `.claude/agents/{ux-designer,contract-designer,core-implementer,extension-implementer,verifier}.md`, `.claude/skills/feature-build/SKILL.md`, `.gitignore`(skills/+_workspace 허용/제외) | implementation-centric 하네스 신규 구축 — 구현 흐름 일관화 + spec drift/privacy 누수 사전 차단 |

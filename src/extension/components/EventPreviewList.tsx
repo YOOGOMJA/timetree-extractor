@@ -10,14 +10,13 @@ export type EventPreviewListProps = {
   /**
    * 이벤트 1건의 표시용 날짜 문자열을 만드는 함수. props 주입 방식을 채택한 이유:
    * - testability: 컴포넌트를 jsdom 없이 호출자 측 stub으로 검증 가능.
-   * - 04_extension_diff.md §10.2의 명시적 권고("props로 주입 권고") 직접 반영.
    * - sidepanel.tsx 내부의 `formatEventDate`는 module-private 헬퍼라 export 하면 surface 확장.
    */
   formatDate: (event: NormalizedCalendarEvent) => string;
 };
 
 /**
- * 이벤트 미리보기 리스트. ux-designer §3.2 `<EventPreviewList>` 명세를 그대로 따른다.
+ * 이벤트 미리보기 리스트.
  *
  * - 0건이면 placeholder 문구만 렌더. (현재 inline style `color:#6b7280`는 토큰화 라운드 책임이므로 유지)
  * - DOM: 기존 `renderResults` 내 event-preview 영역의 `.event-item > .title + .date` 패턴 1:1 유지.
@@ -26,7 +25,7 @@ export type EventPreviewListProps = {
  */
 export function EventPreviewList({ events, formatDate }: EventPreviewListProps): VNode {
   if (events.length === 0) {
-    // inline style은 토큰화 라운드에서 var(--color-fg-muted)로 치환 예정 (04_extension_diff.md §10.2).
+    // inline style은 토큰화 라운드에서 var(--color-fg-muted)로 치환 예정.
     return <p style="color:#6b7280">이벤트가 없습니다.</p>;
   }
   return (

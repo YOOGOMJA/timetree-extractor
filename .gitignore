@@ -14,5 +14,3 @@
 !.claude/skills/**
 node_modules/
 dist/
-_workspace/
-_workspace_prev_*/
