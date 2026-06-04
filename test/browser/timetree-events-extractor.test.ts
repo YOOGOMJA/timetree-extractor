@@ -90,6 +90,24 @@ test('honors since as starting cursor', async () => {
   assert.equal(calls[0], '/api/v1/calendar/1/events?since=42');
 });
 
+test('deduplicates an event that overlaps at a page boundary', async () => {
+  // TimeTree의 ?since= 커서는 경계 inclusive라, 한 페이지 끝 이벤트가
+  // 다음 페이지 맨 앞에 다시 등장한다. 같은 (id) 이벤트가 두 번 수집되면 안 된다.
+  let calls = 0;
+  const result = await extractCalendarEvents({
+    calendarId: 1,
+    fetchJson: async () => {
+      calls += 1;
+      if (calls === 1) return { events: [makeEvent('a'), makeEvent('b')], chunk: true, since: 10 };
+      return { events: [makeEvent('b'), makeEvent('c')], chunk: false, since: 20 };
+    },
+  });
+  assert.equal(result.ok, true);
+  const ids = result.events.map((e) => e.id);
+  assert.deepEqual(ids, ['a', 'b', 'c']);
+  assert.equal(ids.filter((id) => id === 'b').length, 1);
+});
+
 test('module is re-exported from src/browser barrel', async () => {
   const mod = await import('../../src/browser/index.js');
   assert.equal(typeof mod.extractCalendarEvents, 'function');
