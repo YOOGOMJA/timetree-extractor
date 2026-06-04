@@ -56,6 +56,8 @@ type RawTimeTreeEvent = {
   note?: string | null;
   recurrences: string[];
   recurringUuid?: string | null;
+  recurStartAt?: number | null;
+  recurEndAt?: number | null;
   alerts?: unknown[];
   attendees?: unknown[];
   attachment?: unknown;
@@ -88,6 +90,7 @@ type ExtractionWarning =
 | `startAt` / `endAt` | number epoch millisecond로 확보 |
 | `startTimezone` / `endTimezone` | timezone string 또는 explicit null + warning |
 | `recurrences` | string array로 확보, empty array 허용 |
+| `recurStartAt` / `recurEndAt` | 수정된 반복 instance의 *원래* occurrence 시각(epoch ms). optional+nullable, 일반 이벤트엔 없음. SQLite `recur_start_at`/`recur_end_at` · API `recur_start_at`/`recur_end_at` 매핑. RECURRENCE-ID 산출용(#14) |
 | calendar metadata | calendar id/name/alias mapping 가능 |
 | label metadata | label id/name/color mapping 가능 |
 

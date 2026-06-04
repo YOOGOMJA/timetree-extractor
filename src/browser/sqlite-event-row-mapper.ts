@@ -24,6 +24,8 @@ export function mapSqliteEventRowToRawTimeTreeEvent(row: SqliteEventRow): RawTim
     note: optionalNullableString(row.note),
     recurrences,
     recurringUuid: optionalNullableString(row.recurring_uuid),
+    recurStartAt: optionalNullableNumber(row.recur_start_at),
+    recurEndAt: optionalNullableNumber(row.recur_end_at),
     alerts: [],
     attendees: [],
     attachment: null,

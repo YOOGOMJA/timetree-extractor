@@ -47,6 +47,30 @@ test('maps snake_case TimeTree API event payload to raw contract shape', () => {
   ]);
 });
 
+test('captures recur_start_at/recur_end_at as recurStartAt/recurEndAt', () => {
+  const raw = mapApiEventToRawTimeTreeEvent({
+    id: 'mod-1',
+    calendar_id: 1,
+    title: 'Modified instance',
+    all_day: false,
+    start_at: 1777902000000,
+    start_timezone: 'Asia/Seoul',
+    end_at: 1777905600000,
+    end_timezone: 'Asia/Seoul',
+    recurrences: [],
+    recurring_uuid: 'series-1',
+    recur_start_at: 1777900000000,
+    recur_end_at: 1777903600000,
+    alerts: [],
+    attendees: [],
+    attachment: null,
+    files: [],
+  });
+
+  assert.equal(raw.recurStartAt, 1777900000000);
+  assert.equal(raw.recurEndAt, 1777903600000);
+});
+
 test('treats null updated_at and created_at the same as missing', () => {
   const raw = mapApiEventToRawTimeTreeEvent({
     id: 'event-null-ts',

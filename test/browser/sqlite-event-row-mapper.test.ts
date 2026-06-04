@@ -23,6 +23,8 @@ test('maps SQLite events row into the stable raw TimeTree event contract', () =>
     updated_at: 1_767_000_000_001,
     created_at: 1_767_000_000_002,
     deactivated_at: null,
+    recur_start_at: 1_767_000_000_000,
+    recur_end_at: 1_767_003_600_000,
   });
 
   assert.deepEqual(raw, {
@@ -47,6 +49,8 @@ test('maps SQLite events row into the stable raw TimeTree event contract', () =>
     updatedAt: 1_767_000_000_001,
     createdAt: 1_767_000_000_002,
     deactivatedAt: null,
+    recurStartAt: 1_767_000_000_000,
+    recurEndAt: 1_767_003_600_000,
     extractionWarnings: ['internal-api-surface'],
   });
   assert.equal(validateRawTimeTreeEvent(raw).ok, true);

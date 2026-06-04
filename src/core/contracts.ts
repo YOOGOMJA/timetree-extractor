@@ -45,6 +45,10 @@ export type RawTimeTreeEvent = {
   note?: string | null;
   recurrences: string[];
   recurringUuid?: string | null;
+  // 수정된 반복 instance의 *원래* occurrence 시각(epoch ms). RECURRENCE-ID 산출에 필요(#14).
+  // 일반 이벤트엔 없으므로 optional+nullable.
+  recurStartAt?: number | null;
+  recurEndAt?: number | null;
   alerts?: unknown[];
   attendees?: unknown[];
   attachment?: unknown;
@@ -101,6 +105,8 @@ export function validateRawTimeTreeEvent(input: unknown): ValidationResult<RawTi
   optionalString(value, 'url', issues, { allowNull: true });
   optionalString(value, 'note', issues, { allowNull: true });
   optionalString(value, 'recurringUuid', issues, { allowNull: true });
+  optionalNumber(value, 'recurStartAt', issues, { allowNull: true });
+  optionalNumber(value, 'recurEndAt', issues, { allowNull: true });
   optionalNumber(value, 'updatedAt', issues);
   optionalNumber(value, 'createdAt', issues);
   optionalNumber(value, 'deactivatedAt', issues, { allowNull: true });
