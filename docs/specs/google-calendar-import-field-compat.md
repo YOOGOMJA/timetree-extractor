@@ -89,12 +89,14 @@
 
 다음 Google import 동작은 아직 직접 import smoke로 검증되지 않은 추론이다. confidence를 표시하고, issue #15(수동 import smoke)에서 실제 import 후 확인되면 "확인된 사실"로 승격한다.
 
+> **2026-06-04 import 검증으로 정리** (research note "실제 import 검증" 참조):
+> - `CATEGORIES`/`URL` drop, 비IANA `TZID` 시각 shift(`KST`→UTC fallback) — **확인됨**.
+> - `VALARM` "primary 전용" 추론 — **정정**. secondary 캘린더 import에서도 honor(`overrideReminders` popup).
+> - `CLASS:PRIVATE`·`STATUS:TENTATIVE`·`TRANSP:TRANSPARENT`도 honor 확인.
+
 | 항목 | 추론 내용 | confidence |
 | --- | --- | --- |
-| `CATEGORIES`/`URL` drop | Google import UI가 두 property를 노출하지 않는다 | med |
 | `EXRULE` 위험성 | `EXRULE`이 import를 불안정하게 만들거나 무시된다 | med |
-| `VALARM` primary-calendar caveat | reminder가 primary calendar에서만 신뢰성 있게 반영된다 | low |
-| `TZID` non-IANA resolve 실패 | non-IANA `TZID`에서 Google이 시각을 잘못 해석한다 | med |
 | per-event color / CONFERENCE drop | file import가 두 field를 생성/반영하지 않는다 | med |
 
 승격 기준: issue #15에서 실제 `.ics`를 Google Calendar에 import한 뒤 해당 field의 반영 여부를 캡처/기록하면, 그 항목을 이 표에서 "확인된 매핑 결정"으로 옮긴다.

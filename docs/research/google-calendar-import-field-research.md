@@ -29,19 +29,36 @@
 
 방법: 실제 TimeTree export(`.ics`, 253 VEVENT)를 Google Calendar 웹 import → Google Calendar API로 read-back해 저장 결과를 round-trip 대조. 단일 실계정 1회, **API read-back = 저장 상태** 기준이므로 UI 표시 세부(autolink 등)는 별도 확인 대상이다. (issue #15)
 
+### Round 1 — 실제 export(253 VEVENT) round-trip
+
 경험적으로 확인된 사실:
 
 - **UID dedup**: export에 동일 UID 2건이 섞여 있었고(별도 exporter 버그 #52), Google이 iCalUID로 **각각 1개만** 등록 → UID 기반 dedup 동작 확인.
 - **all-day DTEND exclusive**: 1일/2일 종일 이벤트가 `DTEND = DTSTART + N`로 정확히 N일 배너 → off-by-one 없음.
-- **TZID(IANA) 시각 보존**: `TZID=Asia/Seoul` timed event가 KST wall-time 그대로 저장. (비IANA TZID는 여전히 미검증)
+- **TZID(IANA) 시각 보존**: `TZID=Asia/Seoul` timed event가 KST wall-time 그대로 저장.
 - **RRULE 반복 series**: `FREQ=MONTHLY`(+`UNTIL`)가 별도 단발이 아니라 **master 연결 series**(`recurringEventId`)로 전개. `UNTIL` 경계도 정확.
-- **RDATE 반복**: RDATE 날짜들이 series instance로 전개·연결(조회 창 내). → 매트릭스 confidence med→high로 승격.
+- **RDATE 반복**: RDATE 날짜들이 series instance로 전개·연결(조회 창 내).
 - **이벤트 누락 0건**: 253 source 이벤트가 모두 Google에 존재(반복 전개분 제외 1:1).
 
-이번 export로 검증하지 못한 것:
+(이 export는 VALARM·STATUS·CLASS·TRANSP·비IANA TZID를 담지 않아 Round 2 probe로 별도 검증.)
 
-- **VALARM**: 이 export는 VALARM이 0건이라 honor / secondary-drop을 **검증 불가**. Google에 보인 30분 알림은 우리 emit이 아니라 **import 기본 알림**이었다(API read-back에서 `overrideReminders` = calendar 기본값).
-- DESCRIPTION autolink/HTML literal, STATUS/CLASS/TRANSP UI 반영, `RECURRENCE-ID`(미emit, #14), 비IANA TZID fallback, line folding strictness, ~1MB/event-count 한계 — 여전히 미검증.
+### Round 2 — probe `.ics` (secondary 캘린더 `ics 테스트`)
+
+STATUS/CLASS/TRANSP/VALARM/비IANA TZID/DESCRIPTION을 담은 손제작 probe 9건을 **secondary 캘린더**에 import 후 read-back + UI 육안.
+
+- **VALARM secondary honor (정정)**: secondary import에서도 `TRIGGER:-PT30M`가 `overrideReminders` popup 30m으로 honor. probe 중 VALARM 가진 1건만 reminder 보유 → calendar 기본값 아님. **과거 community의 "secondary drop" 보고와 상반** — 2026 기준 동작이 바뀐 것으로 보인다.
+- **CLASS:PRIVATE honor (정정)**: `visibility:private`로 저장. 기존 "parsed-ignored 대체로" 추론을 정정.
+- **DESCRIPTION HTML 렌더 (정정)**: `<b>bold</b>`가 UI에서 **굵게 렌더**(literal 아님), bare URL은 autolink(클릭 가능). 기존 "HTML literal" 추론을 정정.
+- **STATUS**: `TENTATIVE`→`status:tentative`, `CANCELLED`→read-back 미노출.
+- **TRANSP**: `TRANSPARENT`→`transparency:transparent`.
+- **비IANA TZID shift**: `TZID=KST`의 12:00이 UTC로 fallback돼 21:00(+09)로 **9시간 shift**, 대조군 `Asia/Seoul`은 정확 → IANA TZID emit 설계의 정당성 실증.
+- **CATEGORIES/URL drop**: read-back에 해당 필드 없음.
+
+여전히 미검증 (낮은 우선순위 edge case):
+
+- line folding strictness, ~1MB/event-count 파일 한계의 실제 임계
+- `RECURRENCE-ID` (현재 미emit, #14)
+- 단일 계정·단일 시점 결과 — Google 동작은 시간에 따라 변할 수 있음(특히 VALARM secondary는 과거 보고와 상반).
 
 ## VEVENT property별 honor 매트릭스
 
@@ -51,9 +68,9 @@ honor 표기: **yes** = UI에 노출 / **parsed-ignored** = 읽지만 안 보임
 | --- | --- | --- | --- | --- |
 | `UID` | yes | 안 보임 | calendar별 dedup→update. 누락 시 재import 중복 | high |
 | `SUMMARY` | yes | 제목 | — | high |
-| `DESCRIPTION` | yes | 설명란 | **plain text 취급.** bare URL은 autolink, HTML 태그는 literal로 노출. 줄바꿈은 `\n` escape | med |
+| `DESCRIPTION` | yes | 설명란 | bare URL **autolink(클릭 가능)**. **`<b>`/`<i>` 등 기본 HTML은 UI에서 렌더됨**(literal 아님 — 기존 추론 정정). API엔 원문 저장. 줄바꿈 `\n` escape | high |
 | `LOCATION` | yes | 위치(지도 링크) | — | high |
-| `DTSTART/DTEND;TZID=` | yes | 시간 | VTIMEZONE 무시, TZID 문자열을 IANA로 해석. 비IANA → fallback(보통 UTC) → 시간 오류 | high |
+| `DTSTART/DTEND;TZID=` | yes | 시간 | VTIMEZONE 무시, TZID 문자열을 IANA로 해석. 비IANA → fallback(UTC) → 시간 오류 (2026-06-04 확인: `TZID=KST` → UTC fallback로 9h shift, `Asia/Seoul`은 정확) | high |
 | all-day `;VALUE=DATE` | yes | 종일 배너 | DTEND **exclusive**(start+1). off-by-one 주의. 둘 다 `VALUE=DATE` | high |
 | `DTSTART/DTEND` UTC(`Z`) | yes | 뷰어 zone으로 변환 | timed event에서 cross-client 가장 안전. floating(Z·TZID 없음)은 **import 사용자 zone**으로 해석 | high |
 | `RRULE` | yes | 반복 series | `UNTIL`은 DTSTART가 zoned/UTC면 **UTC(`...Z`)** 여야 함. 불일치 시 파일 깨질 수 있음 | high |
@@ -61,13 +78,13 @@ honor 표기: **yes** = UI에 노출 / **parsed-ignored** = 읽지만 안 보임
 | `EXDATE` | yes | instance 제거 | 반복 instance의 시각/zone과 정확히 일치해야 취소됨 | med |
 | `EXRULE` | parsed-ignored / 위험 | — | RFC 5545 deprecated. **emit 금지** | med |
 | `RECURRENCE-ID` | yes(조건부) | 수정된 단일 instance | master VEVENT가 **같은 파일에 있고 UID 동일**할 때만. 단독이면 별 단발 event | med |
-| `VALARM` | yes(큰 단서) | 알림 | **primary calendar로 import할 때만 반영**, secondary calendar는 조용히 드롭. `ACTION:DISPLAY`→popup, `EMAIL`→email, `AUDIO`→popup으로 강등. 상대 `TRIGGER`(`-PT30M`) honor | med-high |
+| `VALARM` | yes | 알림 | **2026-06-04 secondary 캘린더 import에서도 honor**(`overrideReminders` popup 30m — 과거 community의 "secondary drop" 보고와 상반, 동작 변경된 것으로 보임). `ACTION:DISPLAY`→popup, 상대 `TRIGGER`(`-PT30M`) honor | high (single-account 검증) |
 | `ATTENDEE` | parsed-ignored | guest 추가 안 됨 | file import는 guest 미추가·**초대 미발송** | high |
 | `ORGANIZER` | parsed-ignored | 안 보임 | import한 사람이 소유자가 됨 | high |
-| `STATUS` | partial | CANCELLED 숨김/삭제; CONFIRMED/TENTATIVE 모두 정상 표시 | TENTATIVE 시각 구분 없음 | med |
-| `TRANSP` | yes | 한가함/바쁨(Availability) | `TRANSPARENT`→Free, `OPAQUE`→Busy | med |
-| `CLASS` | parsed-ignored(대체로) | calendar 기본 가시성 | PUBLIC/PRIVATE 반영 드묾 | low-med |
-| `CATEGORIES` | parsed-ignored | **드롭(어디에도 안 뜸)** | Google에 category/tag 개념 없음 | med-high |
+| `STATUS` | yes | CANCELLED 목록 미노출; TENTATIVE 저장 | 2026-06-04 확인: TENTATIVE→`status:tentative`, CANCELLED→read-back 미노출 | high |
+| `TRANSP` | yes | 한가함/바쁨(Availability) | `TRANSPARENT`→`transparency:transparent` (2026-06-04 확인) | high |
+| `CLASS` | yes | 가시성 | 2026-06-04 확인: `PRIVATE`→`visibility:private` honor (기존 "parsed-ignored 대체로" 추론 정정) | high |
+| `CATEGORIES` | parsed-ignored | **드롭** | read-back에 category 필드 없음 (2026-06-04 확인) | high |
 | color / per-event color | **no** | — | ICS로 Google event 색 지정 불가(수동 설정뿐) | high |
 | `URL`(RFC 7986/5545) | parsed-ignored | field로 안 보임 | 링크는 DESCRIPTION에 넣어 autolink | med |
 | `CONFERENCE`(RFC 7986) | parsed-ignored | Meet/회의 정보 없음 | conference data 미import | high |
@@ -84,14 +101,10 @@ honor 표기: **yes** = UI에 노출 / **parsed-ignored** = 읽지만 안 보임
 
 ## 미검증 — 수동 import smoke로 확인 필요
 
-다음은 confidence가 med 이하라 spec에서 "확정"으로 쓰기 전 실제 Google import 테스트가 필요하다 (2026-06-04 round-trip에서 확인된 항목은 위 "실제 import 검증" 섹션으로 이동):
+DESCRIPTION / VALARM(secondary) / STATUS / CLASS / TRANSP / 비IANA TZID는 2026-06-04 Round 2 probe에서 검증돼 위 "실제 import 검증" 섹션으로 이동했다. 남은 미검증 항목:
 
-- `DESCRIPTION`의 bare-URL autolink / HTML literal 처리
-- `VALARM`이 secondary calendar import에서 드롭되는지 (2026 기준 재확인 — 2026-06-04 export는 VALARM 0건이라 미검증 유지)
-- `STATUS:TENTATIVE` / `CLASS` / `TRANSP`의 UI 반영
 - `RECURRENCE-ID` 동작 (현재 미emit, #14)
-- 비IANA `TZID`(예: `KST`)의 fallback 시각 오류
-- line folding strictness와 ~1MB/event-count 한계의 실제 임계
+- line folding strictness와 ~1MB/event-count 한계의 실제 임계 (의도적 대용량/오folding fixture 필요)
 
 ## Sources
 
