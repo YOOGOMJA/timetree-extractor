@@ -46,9 +46,9 @@
 - caveat: Google file import의 reminder는 **primary calendar로 import할 때만 신뢰성 있게 반영**되고, secondary calendar는 silent drop된다. UI 추가 경고는 두지 않으며(공유 캘린더 경고 모달이 export 게이트로 충분), 사용자는 import 실패 시 이 문서를 참조한다.
 - 음수 정수가 아닌 `minutesBefore`(0/양수/소수/NaN)는 ICS writer 단에서 silent skip한다. raw → normalized 단계에서 `reminder-unsupported` warning을 emit한다(후속 작업, #13).
 
-### 계획됨 (별도 이슈)
+### 구현됨
 
-- `recurringUuid → RECURRENCE-ID`: issue #14. recurring event instance override 표현.
+- `recurringUuid → RECURRENCE-ID`: issue #14. 수정된 반복 instance를 master와 동일 UID로 묶고 `originalStartAt`(raw `recurStartAt`)을 master DTSTART의 VALUE/TZID로 포맷해 `RECURRENCE-ID`를 emit한다. master가 같은 export(range filter 이후 set)에 없거나 애매하면 단발 UID 유지 + `recurrence-override-orphaned` warning으로 fallback(data-loss 0). 실데이터 의미론(어떤 값이 master/override를 가리키는지)은 별도 후속으로 검증한다.
 
 ### 의도적으로 제외 (정책 + Google 모두)
 
@@ -79,7 +79,8 @@
 | `recurrences` (`RRULE`/`RDATE`/`EXDATE`) | `recurrence` | `RRULE`/`RDATE`/`EXDATE` | emit (supported subset만) |
 | `recurrences` (`EXRULE`) | `recurrence.exrule` | `EXRULE` | emit (Google은 무시, Apple/Outlook 위해 보존, `recurrence-unsupported` 유지) |
 | `alerts` | `reminders` | `VALARM` | emit (`ACTION:DISPLAY`, relative `TRIGGER`) |
-| `recurringUuid` | (계획) | `RECURRENCE-ID` | 계획됨 (#14) |
+| `recurringUuid` | `recurrenceGroupId` | `RECURRENCE-ID` | emit (master 동일 UID 그룹, 부재/애매 시 `recurrence-override-orphaned` fallback) (#14) |
+| `recurStartAt` | `originalStartAt` → `recurrenceId` | `RECURRENCE-ID` 값 | emit (master tz/VALUE 타입으로 포맷) (#14) |
 | `attendees` | warning만 | — | drop (`participant-omitted`) |
 | `attachment` / `files` | warning만 | — | drop (`attachment-omitted`) |
 | per-event color | — | — | drop |
