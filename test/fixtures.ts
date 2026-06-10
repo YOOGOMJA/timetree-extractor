@@ -58,7 +58,7 @@ export const unsupportedRecurringEventFixture: RawTimeTreeEvent = {
   ...timedEventFixture,
   id: 'event-recurring-unsupported-1',
   title: 'Synthetic unsupported recurrence event',
-  recurrences: ['RRULE:FREQ=YEARLY;BYMONTH=5;BYMONTHDAY=5'],
+  recurrences: ['RRULE:FREQ=SECONDLY'],
 };
 
 export const missingTimezoneTimedEventFixture: RawTimeTreeEvent = {
