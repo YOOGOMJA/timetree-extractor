@@ -103,7 +103,7 @@ honor 표기: **yes** = UI에 노출 / **parsed-ignored** = 읽지만 안 보임
 
 DESCRIPTION / VALARM(secondary) / STATUS / CLASS / TRANSP / 비IANA TZID는 2026-06-04 Round 2 probe에서 검증돼 위 "실제 import 검증" 섹션으로 이동했다. 남은 미검증 항목:
 
-- `RECURRENCE-ID` 동작 (현재 미emit, #14)
+- `RECURRENCE-ID` 동작 — #14(PR #58)에서 **emit 구현됨**. 실데이터 import 검증은 #59로 분리; 절차는 [recurrence-id-smoke-runbook.md](./recurrence-id-smoke-runbook.md).
 - line folding strictness와 ~1MB/event-count 한계의 실제 임계 (의도적 대용량/오folding fixture 필요)
 
 ## Sources
