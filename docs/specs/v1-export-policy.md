@@ -44,16 +44,15 @@
 
 v1은 TimeTree `recurrences`가 이미 `RRULE`, `RDATE`, `EXRULE`, `EXDATE` 같은 calendar rule string이면 보존한다.
 
-- 지원:
-  - `RRULE:FREQ=DAILY`
-  - `RRULE:FREQ=WEEKLY` with `BYDAY`
-  - `RRULE:FREQ=MONTHLY`
+- 지원 (#61: FREQ 표준 4종, modifier 무관):
+  - `RRULE:FREQ=DAILY` / `WEEKLY` / `MONTHLY` / `YEARLY`
   - `RDATE`
   - `EXDATE`
 - 보존하지만 warning:
-  - `EXRULE`
-  - 알 수 없는 rule string
-  - 지원 범위 밖 `RRULE`
+  - `EXRULE` (Apple/Outlook 호환 위해 emit 유지)
+- event-level fail + `recurrence-unsupported` warning:
+  - `FREQ`가 표준 4종이 아닌 `RRULE` (`SECONDLY`/`MINUTELY`/`HOURLY` 등) 또는 `FREQ` 누락
+  - 알 수 없는 rule prefix
 - fail/warning:
   - JSONB decode는 되지만 string array가 아닌 recurrence shape
 

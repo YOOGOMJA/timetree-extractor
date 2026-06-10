@@ -81,14 +81,14 @@ type NormalizedReminder = {
 
 ## Initial recurrence subset
 
-normalize가 통과시키는 RRULE은 다음 패턴으로 제한한다 (#27에서 강제).
+normalize가 통과시키는 RRULE은 `FREQ`가 표준 4종일 때다 (#61에서 #27의 좁은 allowlist를 완화).
 
-- `RRULE:FREQ=DAILY` (BYxxx 조건 없음)
-- `RRULE:FREQ=WEEKLY` **+ `BYDAY` 필수**
-- `RRULE:FREQ=MONTHLY` 기본 패턴 — `BYSETPOS`는 거부 (예: 'last Monday of month')
-- `RDATE` / `EXDATE`는 그대로 보존
+- `RRULE:FREQ=DAILY` / `WEEKLY` / `MONTHLY` / `YEARLY` — `INTERVAL`/`COUNT`/`UNTIL`/`BYxxx`/`WKST` 등 modifier와 무관하게 통과 (RFC 5545 valid, Google import honor).
+- `RDATE` / `EXDATE`는 그대로 보존.
 
-위 subset을 벗어나는 RRULE 또는 알 수 없는 rule prefix를 만나면 `recurrence-unsupported` warning과 함께 **event-level fail**(`NormalizationResult.ok = false`)로 처리한다 — silent emit으로 사용자가 빠진 일정을 모르는 일을 막는다.
+`FREQ`가 위 4종이 아니거나(`SECONDLY`/`MINUTELY`/`HOURLY` 등), `FREQ`가 없거나, 알 수 없는 rule prefix를 만나면 `recurrence-unsupported` warning과 함께 **event-level fail**(`NormalizationResult.ok = false`)로 처리한다 — silent emit으로 사용자가 빠진 일정을 모르는 일을 막는다.
+
+> #27은 본래 `WEEKLY +BYDAY 필수`, `YEARLY 제외`, `MONTHLY BYSETPOS 거부`로 좁게 제한했으나, 실데이터(Claude in Chrome 관찰)에서 bare `FREQ=WEEKLY`·`FREQ=YEARLY`가 통째로 드롭되는 data-loss가 확인돼 #61에서 FREQ-allowlist로 완화했다. 셋 다 RFC valid이고 Google이 honor한다.
 
 EXRULE은 위 정책에서 제외 — RFC 5545에서 deprecated이고 Google import는 무시하지만 Apple/Outlook이 honor하므로 emit을 유지한다 (`v1-export-policy.md` "EXRULE 보존"). `recurrence-unsupported` warning은 동반.
 
