@@ -338,19 +338,30 @@ async function exportEvents(): Promise<void> {
 // state-* 는 건드리지 않으므로, TimeTree를 떠났다 돌아와도 진행 상태가 보존된다.
 // TimeTree이고 아직 아무것도 안 한 상태(idle)면 캘린더를 1회 자동 로드한다 —
 // 패널을 연 것 자체가 사용자 액션이므로 background polling이 아니다.
+//
+// refreshSeq: onActivated/onUpdated/초기 호출이 겹칠 때 오래된 tabs.query 결과가
+// 늦게 resolve되어 최신 패널 상태를 덮어쓰는 레이스를 막는다 — 최신 호출만 DOM에 반영.
+let refreshSeq = 0;
+
 async function refreshPanelForActiveTab(): Promise<void> {
+  const seq = ++refreshSeq;
   let onTimetree = false;
   try {
     onTimetree = await isOnTimetree();
   } catch {
     // 탭 정보를 가져올 수 없는 경우 TimeTree 외 페이지로 간주
   }
+  if (seq !== refreshSeq) return; // 더 최신 refresh가 진행 중 — stale 결과 폐기
   document.getElementById('panel-not-timetree')?.toggleAttribute('hidden', onTimetree);
   document.getElementById('panel-main')?.toggleAttribute('hidden', !onTimetree);
 
   if (onTimetree && currentState === 'idle' && !autoLoadAttempted) {
     autoLoadAttempted = true;
     await loadCalendars({ silentFallback: true });
+    // url-change 이벤트는 content script 주입 전에 올 수 있다. 그때 silent 실패하면
+    // 가드를 되돌려 이후 status==='complete' 이벤트에서 재시도하게 한다.
+    // (시도는 탭 이벤트당 최대 1회이므로 루프 없음.)
+    if (currentState === 'idle') autoLoadAttempted = false;
   }
 }
 
