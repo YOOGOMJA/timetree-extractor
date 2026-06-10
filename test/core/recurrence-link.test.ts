@@ -1,7 +1,8 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { linkRecurringOverrides } from '../../src/core/recurrence-link.js';
-import type { NormalizedCalendarEvent } from '../../src/core/normalize.js';
+import { normalizeRawTimeTreeEvent, type NormalizedCalendarEvent } from '../../src/core/normalize.js';
+import { createIcsCalendar } from '../../src/core/ics.js';
 
 function master(over: Partial<NormalizedCalendarEvent> = {}): NormalizedCalendarEvent {
   return {
@@ -88,4 +89,28 @@ test('입력 이벤트를 변형하지 않는다 (pure: 새 객체 반환)', () 
   assert.equal(o.warnings, before);
   assert.equal(o.warnings.length, 0);
   assert.equal(o.uid, 'timetree:7:evt-override');
+});
+
+test('end-to-end: raw master+override → ICS의 override VEVENT가 master UID + RECURRENCE-ID를 갖는다', () => {
+  const base = {
+    calendarId: 7, category: 'schedule', allDay: false,
+    startTimezone: 'Asia/Seoul', endTimezone: 'Asia/Seoul',
+  };
+  const raws = [
+    { ...base, id: 'evt-master', title: 'M', startAt: 1767000000000, endAt: 1767003600000,
+      recurrences: ['RRULE:FREQ=WEEKLY;BYDAY=MO'], recurringUuid: 'grp-abc' },
+    { ...base, id: 'evt-override', title: 'O', startAt: 1767607200000, endAt: 1767610800000,
+      recurrences: [], recurringUuid: 'grp-abc', recurStartAt: 1767604800000 },
+  ];
+  const normalized = raws
+    .map((r) => normalizeRawTimeTreeEvent(r))
+    .flatMap((r) => (r.ok ? [r.value] : []));
+  const ics = createIcsCalendar(linkRecurringOverrides(normalized));
+
+  // 두 VEVENT가 같은 UID를 공유하고, override 쪽에만 RECURRENCE-ID가 붙는다.
+  const uidLines = ics.split('\r\n').filter((l) => l.startsWith('UID:'));
+  assert.equal(uidLines.length, 2);
+  assert.deepEqual(uidLines, ['UID:timetree:7:evt-master', 'UID:timetree:7:evt-master']);
+  assert.match(ics, /RECURRENCE-ID;TZID=Asia\/Seoul:\d{8}T\d{6}/);
+  assert.equal((ics.match(/RECURRENCE-ID/g) ?? []).length, 1);
 });
