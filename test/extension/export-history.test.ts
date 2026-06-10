@@ -3,7 +3,7 @@ import { test } from 'node:test';
 import { prependRecord, HISTORY_MAX, type ExportHistoryRecord } from '../../src/extension/export-history.js';
 
 function rec(at: number): ExportHistoryRecord {
-  return { at, calendars: ['개인'], fromDate: '2026-06-01', toDate: '2026-07-01', format: 'ics', exportCount: 10, warningCount: 0, filename: `f-${at}.ics` };
+  return { at, calendarCount: 1, fromDate: '2026-06-01', toDate: '2026-07-01', format: 'ics', exportCount: 10, warningCount: 0, filename: `f-${at}.ics` };
 }
 
 test('prependRecord: 새 record를 맨 앞에 추가한다', () => {

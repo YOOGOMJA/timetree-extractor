@@ -227,7 +227,7 @@ function renderRecentExports(records: ExportHistoryRecord[]): void {
       {records.map((r, i) => (
         <div class="recent-item" key={i}>
           <div>{historyDateFmt.format(r.at)} · {r.format.toUpperCase()} · {r.exportCount}건</div>
-          <div class="meta">캘린더 {r.calendars.length}개 · {r.fromDate} ~ {r.toDate}{r.warningCount > 0 ? ` · 경고 ${r.warningCount}` : ''}</div>
+          <div class="meta">캘린더 {r.calendarCount}개 · {r.fromDate} ~ {r.toDate}{r.warningCount > 0 ? ` · 경고 ${r.warningCount}` : ''}</div>
         </div>
       ))}
     </div>,
@@ -235,8 +235,15 @@ function renderRecentExports(records: ExportHistoryRecord[]): void {
   );
 }
 
+// historySeq: idle 진입의 fire-and-forget refresh와 clear 후 refresh가 겹칠 때 오래된
+// loadHistory 결과가 최신 렌더를 덮어쓰는 레이스를 막는다 — 최신 호출만 반영.
+let historySeq = 0;
+
 async function refreshRecentExports(): Promise<void> {
-  renderRecentExports(await loadHistory());
+  const seq = ++historySeq;
+  const records = await loadHistory();
+  if (seq !== historySeq) return; // 더 최신 refresh가 진행 중 — stale 결과 폐기
+  renderRecentExports(records);
 }
 
 let lastNormalized: NormalizedCalendarEvent[] = [];
@@ -419,14 +426,12 @@ async function exportEvents(): Promise<void> {
 
   downloadFile(decision.content, decision.filename, decision.mimeType);
 
-  // 메타데이터만 기록(#69) — 이벤트 내용·토큰·raw 응답은 저장하지 않는다.
-  const selectedNames = loadedCalendars
-    .filter((c) => selectedCalendarIds.has(c.id))
-    .map((c) => c.name);
+  // 메타데이터만 기록(#69) — 이벤트 내용·캘린더 이름·토큰·raw 응답은 저장하지 않는다.
+  const calendarCount = loadedCalendars.filter((c) => selectedCalendarIds.has(c.id)).length;
   const warningTotal = lastNormalized.reduce((sum, e) => sum + e.warnings.length, 0);
   await recordExport({
     at: Date.now(),
-    calendars: selectedNames,
+    calendarCount,
     fromDate: (document.getElementById('date-from') as HTMLInputElement | null)?.value ?? '',
     toDate: (document.getElementById('date-to') as HTMLInputElement | null)?.value ?? '',
     format: getSelectedFormat(),

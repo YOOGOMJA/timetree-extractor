@@ -3,7 +3,7 @@
 
 export type ExportHistoryRecord = {
   at: number; // epoch ms
-  calendars: string[]; // 선택 캘린더 이름(사용자 자신의 라벨)
+  calendarCount: number; // 선택 캘린더 수 (이름은 저장하지 않음 — 데이터 최소화)
   fromDate: string; // YYYY-MM-DD
   toDate: string;
   format: 'ics' | 'json';
