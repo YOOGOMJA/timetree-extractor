@@ -19,6 +19,8 @@ import {
 import { CalendarList } from './components/CalendarList.js';
 import { describeWarning } from './warning-copy.js';
 import { computeVirtualWindow } from './virtual-window.js';
+import type { ExportHistoryRecord } from './export-history.js';
+import { loadHistory, recordExport, clearHistory } from './export-history-store.js';
 
 async function sendToContentScript<T>(request: ExtensionRequest): Promise<T> {
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
@@ -45,6 +47,8 @@ function showState(state: State): void {
   for (const s of panels) {
     document.getElementById(`state-${s}`)?.toggleAttribute('hidden', s !== state);
   }
+  // idle 화면이 보일 때마다 최근 내보내기 기록을 갱신한다(#69). fire-and-forget.
+  if (state === 'idle') void refreshRecentExports();
 }
 
 function showError(message: string): void {
@@ -201,6 +205,38 @@ function downloadFile(content: string, filename: string, mimeType: string): void
 function getSelectedFormat(): 'ics' | 'json' {
   const checked = document.querySelector<HTMLInputElement>('input[name="format"]:checked');
   return (checked?.value ?? 'ics') as 'ics' | 'json';
+}
+
+// --- 최근 내보내기 기록 (#69) ---
+const historyDateFmt = new Intl.DateTimeFormat(undefined, {
+  month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit',
+});
+
+function renderRecentExports(records: ExportHistoryRecord[]): void {
+  const section = document.getElementById('recent-section');
+  const list = document.getElementById('recent-list');
+  if (!section || !list) return;
+  if (records.length === 0) {
+    section.setAttribute('hidden', '');
+    render(null, list);
+    return;
+  }
+  section.removeAttribute('hidden');
+  render(
+    <div>
+      {records.map((r, i) => (
+        <div class="recent-item" key={i}>
+          <div>{historyDateFmt.format(r.at)} · {r.format.toUpperCase()} · {r.exportCount}건</div>
+          <div class="meta">캘린더 {r.calendars.length}개 · {r.fromDate} ~ {r.toDate}{r.warningCount > 0 ? ` · 경고 ${r.warningCount}` : ''}</div>
+        </div>
+      ))}
+    </div>,
+    list,
+  );
+}
+
+async function refreshRecentExports(): Promise<void> {
+  renderRecentExports(await loadHistory());
 }
 
 let lastNormalized: NormalizedCalendarEvent[] = [];
@@ -382,6 +418,22 @@ async function exportEvents(): Promise<void> {
   }
 
   downloadFile(decision.content, decision.filename, decision.mimeType);
+
+  // 메타데이터만 기록(#69) — 이벤트 내용·토큰·raw 응답은 저장하지 않는다.
+  const selectedNames = loadedCalendars
+    .filter((c) => selectedCalendarIds.has(c.id))
+    .map((c) => c.name);
+  const warningTotal = lastNormalized.reduce((sum, e) => sum + e.warnings.length, 0);
+  await recordExport({
+    at: Date.now(),
+    calendars: selectedNames,
+    fromDate: (document.getElementById('date-from') as HTMLInputElement | null)?.value ?? '',
+    toDate: (document.getElementById('date-to') as HTMLInputElement | null)?.value ?? '',
+    format: getSelectedFormat(),
+    exportCount: lastNormalized.length,
+    warningCount: warningTotal,
+    filename: decision.filename,
+  });
 }
 
 // 활성 탭 기준으로 TimeTree 여부를 재평가해 패널을 토글한다(#67). panel-main 내부의
@@ -478,6 +530,13 @@ document.addEventListener('DOMContentLoaded', () => {
     lastTotalFetched = 0;
     showState('idle');
   });
+
+  document.getElementById('btn-clear-history')?.addEventListener('click', async () => {
+    await clearHistory();
+    refreshRecentExports();
+  });
+
+  void refreshRecentExports(); // 기본 idle 화면에 최근 기록 1회 렌더
 
   chrome.tabs.onActivated.addListener(() => {
     refreshPanelForActiveTab();
