@@ -40,8 +40,11 @@ test('master 부재: 단발 uid 유지 + recurrence-override-orphaned warning', 
   assert.ok(o.warnings.includes('recurrence-override-orphaned'));
 });
 
-test('all-day master: recurrenceId는 date 종류로 구성된다', () => {
-  const m = master({ start: { kind: 'date', date: '2026-01-05' } });
+test('all-day master: recurrenceId는 originalStartAt의 UTC date로 구성된다 (master.start.date 복사 아님)', () => {
+  // master.start.date('2025-12-29')와 originalStartAt의 UTC date('2026-01-05')를
+  // 일부러 다르게 둬서 buildRecurrenceId가 master.start.date를 복사하지 않고
+  // toUtcDate(originalStartAt)을 쓰는지 증명한다. new Date(1767604800000) → 2026-01-05.
+  const m = master({ start: { kind: 'date', date: '2025-12-29' } });
   const [, o] = linkRecurringOverrides([m, override()]);
   assert.deepEqual(o.recurrenceId, { kind: 'date', date: '2026-01-05' });
 });
@@ -76,4 +79,13 @@ test('일반 이벤트(group 없음): 무변경, warning/recurrenceId 없음', (
   assert.equal(out.uid, 'timetree:7:evt-plain');
   assert.equal(out.recurrenceId, undefined);
   assert.equal(out.warnings.length, 0);
+});
+
+test('입력 이벤트를 변형하지 않는다 (pure: 새 객체 반환)', () => {
+  const o = override();
+  const before = o.warnings;
+  linkRecurringOverrides([o]);
+  assert.equal(o.warnings, before);
+  assert.equal(o.warnings.length, 0);
+  assert.equal(o.uid, 'timetree:7:evt-override');
 });
