@@ -103,7 +103,8 @@ honor 표기: **yes** = UI에 노출 / **parsed-ignored** = 읽지만 안 보임
 
 DESCRIPTION / VALARM(secondary) / STATUS / CLASS / TRANSP / 비IANA TZID는 2026-06-04 Round 2 probe에서 검증돼 위 "실제 import 검증" 섹션으로 이동했다. 남은 미검증 항목:
 
-- `RECURRENCE-ID` 동작 — #14(PR #58)에서 **emit 구현됨**. 실데이터 import 검증은 #59로 분리; 절차는 [recurrence-id-smoke-runbook.md](./recurrence-id-smoke-runbook.md).
+- `RECURRENCE-ID` 동작 — #14(PR #58)/#62(PR #65)에서 **emit 구현됨**(실모델로 재설계). 실데이터 모델은 Claude in Chrome로 관찰: override의 `recurring_uuid`가 master `id`를 가리키고 master는 EXDATE를 가짐.
+- `RRULE UNTIL` 형식 — **TimeTree 웹은 반복 종료일(UNTIL) UI가 없다**(Repeat은 무한 프리셋만; 2026-06-11 Claude in Chrome 관찰). 따라서 웹 생성 이벤트엔 UNTIL이 없고, UNTIL은 모바일 동기화 이벤트에 한정된다(형식 미관찰). #63(PR #66)에서 방어적 정규화(all-day→DATE, UTC→Z) 구현. non-UTC zoned floating UNTIL은 실 샘플 확보 시 추가 검증.
 - line folding strictness와 ~1MB/event-count 한계의 실제 임계 (의도적 대용량/오folding fixture 필요)
 
 ## Sources

@@ -162,7 +162,7 @@ function createIcsEventLines(event: NormalizedCalendarEvent, timestamp: string):
   if (event.location) lines.push(`LOCATION:${escapeText(event.location)}`);
   if (event.url) lines.push(`URL:${event.url}`);
   if (event.labels && event.labels.length > 0) lines.push(`CATEGORIES:${event.labels.map(escapeText).join(',')}`);
-  if (event.recurrence) lines.push(...formatRecurrenceLines(event.recurrence));
+  if (event.recurrence) lines.push(...formatRecurrenceLines(event.recurrence, event.start));
   lines.push(...createIcsValarmLines(event));
 
   lines.push('END:VEVENT');
@@ -202,9 +202,9 @@ function isUtcZone(timezone: string): boolean {
 // honor it — dropping it would silently re-introduce excluded instances there. So we
 // preserve it (matching docs/specs/v1-export-policy.md); normalize.ts still records
 // the `recurrence-unsupported` warning for the source EXRULE.
-function formatRecurrenceLines(recurrence: NormalizedRecurrence): string[] {
+function formatRecurrenceLines(recurrence: NormalizedRecurrence, start: NormalizedDateTime): string[] {
   return [
-    ...(recurrence.rrule ?? []).map((line) => formatRuleLine('RRULE', line)),
+    ...(recurrence.rrule ?? []).map((line) => normalizeRRuleUntil(formatRuleLine('RRULE', line), start)),
     ...(recurrence.rdate ?? []).map((line) => formatRuleLine('RDATE', line)),
     ...(recurrence.exrule ?? []).map((line) => formatRuleLine('EXRULE', line)),
     ...(recurrence.exdate ?? []).map((line) => formatRuleLine('EXDATE', line)),
@@ -214,6 +214,24 @@ function formatRecurrenceLines(recurrence: NormalizedRecurrence): string[] {
 function formatRuleLine(name: string, line: string): string {
   if (line.startsWith(`${name}:`) || line.startsWith(`${name};`)) return line;
   return `${name}:${line}`;
+}
+
+// RRULE의 UNTIL 값을 DTSTART와 정합하게 보정한다 (#63). Google import는 DTSTART가
+// zoned/UTC면 UNTIL이 UTC `Z` 형식이어야 파일이 깨지지 않는다(research high-confidence).
+// - all-day(DATE) DTSTART → UNTIL을 DATE 형식(YYYYMMDD)으로(시간부 제거).
+// - UTC DTSTART → UNTIL을 UTC `Z`로(없으면 보충; UTC wall-clock == UTC라 변환 불필요).
+// - non-UTC zoned DTSTART + floating UNTIL → 보수적 미변경(실 UNTIL 샘플 미확보 — 별도 #63 잔여).
+//   TimeTree 웹은 UNTIL UI 자체가 없어 웹 생성 이벤트엔 UNTIL이 없다(모바일 동기화 한정).
+function normalizeRRuleUntil(line: string, start: NormalizedDateTime): string {
+  return line.replace(/(;UNTIL=)([0-9]{8}(?:T[0-9]{6})?Z?)/i, (_full, prefix: string, value: string) => {
+    if (start.kind === 'date') return `${prefix}${value.slice(0, 8)}`;
+    if (value.endsWith('Z') || value.endsWith('z')) return `${prefix}${value.slice(0, -1)}Z`;
+    if (isUtcZone(start.timezone)) {
+      const dateTime = value.length >= 15 ? value.slice(0, 15) : `${value.slice(0, 8)}T000000`;
+      return `${prefix}${dateTime}Z`;
+    }
+    return `${prefix}${value}`;
+  });
 }
 
 function formatUtcDateTime(date: Date): string {

@@ -478,3 +478,62 @@ test('recurrenceId가 없으면 RECURRENCE-ID 라인이 없다', () => {
   const ics = createIcsCalendar([ev]);
   assert.doesNotMatch(ics, /RECURRENCE-ID/);
 });
+
+test('all-day RRULE UNTIL은 DATE 형식으로 정규화된다 (#63)', () => {
+  const ev = {
+    uid: 'timetree:7:m', calendarName: 'cal', title: 'M',
+    start: { kind: 'date', date: '2026-07-01' }, end: { kind: 'date', date: '2026-07-02' },
+    recurrence: { rrule: ['RRULE:FREQ=WEEKLY;UNTIL=20260729T000000Z'] },
+    source: { provider: 'timetree', eventId: 'm', calendarId: 7 }, warnings: [],
+  } as const;
+  const ics = createIcsCalendar([ev as unknown as NormalizedCalendarEvent]);
+  assert.match(ics, /RRULE:FREQ=WEEKLY;UNTIL=20260729(?![0-9TZ])/);
+  assert.doesNotMatch(ics, /UNTIL=20260729T/);
+});
+
+test('UTC date-time RRULE UNTIL(Z 없음)은 Z가 보충된다 (#63)', () => {
+  const ev = {
+    uid: 'timetree:7:m', calendarName: 'cal', title: 'M',
+    start: { kind: 'date-time', epochMs: 1782000000000, timezone: 'UTC' },
+    end: { kind: 'date-time', epochMs: 1782003600000, timezone: 'UTC' },
+    recurrence: { rrule: ['RRULE:FREQ=WEEKLY;UNTIL=20260729T100000'] },
+    source: { provider: 'timetree', eventId: 'm', calendarId: 7 }, warnings: [],
+  } as const;
+  const ics = createIcsCalendar([ev as unknown as NormalizedCalendarEvent]);
+  assert.match(ics, /UNTIL=20260729T100000Z/);
+});
+
+test('UTC RRULE UNTIL이 이미 Z면 그대로 (#63)', () => {
+  const ev = {
+    uid: 'timetree:7:m', calendarName: 'cal', title: 'M',
+    start: { kind: 'date-time', epochMs: 1782000000000, timezone: 'UTC' },
+    end: { kind: 'date-time', epochMs: 1782003600000, timezone: 'UTC' },
+    recurrence: { rrule: ['RRULE:FREQ=WEEKLY;UNTIL=20260729T100000Z'] },
+    source: { provider: 'timetree', eventId: 'm', calendarId: 7 }, warnings: [],
+  } as const;
+  const ics = createIcsCalendar([ev as unknown as NormalizedCalendarEvent]);
+  assert.match(ics, /UNTIL=20260729T100000Z(?!Z)/);
+});
+
+test('non-UTC zoned floating UNTIL은 보수적으로 미변경 (#63 잔여)', () => {
+  const ev = {
+    uid: 'timetree:7:m', calendarName: 'cal', title: 'M',
+    start: { kind: 'date-time', epochMs: 1782000000000, timezone: 'Asia/Seoul' },
+    end: { kind: 'date-time', epochMs: 1782003600000, timezone: 'Asia/Seoul' },
+    recurrence: { rrule: ['RRULE:FREQ=WEEKLY;UNTIL=20260729T100000'] },
+    source: { provider: 'timetree', eventId: 'm', calendarId: 7 }, warnings: [],
+  } as const;
+  const ics = createIcsCalendar([ev as unknown as NormalizedCalendarEvent]);
+  assert.match(ics, /UNTIL=20260729T100000(?!Z)/);
+});
+
+test('UNTIL 없는 RRULE은 무변경 (#63 무회귀)', () => {
+  const ev = {
+    uid: 'timetree:7:m', calendarName: 'cal', title: 'M',
+    start: { kind: 'date', date: '2026-07-01' }, end: { kind: 'date', date: '2026-07-02' },
+    recurrence: { rrule: ['RRULE:FREQ=WEEKLY'] },
+    source: { provider: 'timetree', eventId: 'm', calendarId: 7 }, warnings: [],
+  } as const;
+  const ics = createIcsCalendar([ev as unknown as NormalizedCalendarEvent]);
+  assert.match(ics, /RRULE:FREQ=WEEKLY(?![;0-9])/);
+});
