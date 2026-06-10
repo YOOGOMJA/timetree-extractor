@@ -141,7 +141,7 @@ test('preserves supported recurrence rules', () => {
   assert.equal(result.value.warnings.includes('recurrence-unsupported'), false);
 });
 
-test('unsupported recurrence는 event-level fail로 처리된다 (#27)', () => {
+test('미지원 FREQ(SECONDLY)는 event-level fail로 처리된다', () => {
   const result = normalizeRawTimeTreeEvent(unsupportedRecurringEventFixture, {
     calendar: calendarFixture,
     labels: labelsFixture,
@@ -149,25 +149,65 @@ test('unsupported recurrence는 event-level fail로 처리된다 (#27)', () => {
 
   assert.equal(result.ok, false);
   assert.equal(result.value, undefined);
-  assert.match(result.issues.join('\n'), /unsupported recurrence rule.*FREQ=YEARLY/);
+  assert.match(result.issues.join('\n'), /unsupported recurrence rule.*FREQ=SECONDLY/);
 });
 
-test('WEEKLY without BYDAY는 unsupported로 fail한다 (spec subset)', () => {
+test('WEEKLY without BYDAY는 통과한다 (#61, 실데이터 RRULE:FREQ=WEEKLY)', () => {
   const result = normalizeRawTimeTreeEvent(
     { ...timedEventFixture, recurrences: ['RRULE:FREQ=WEEKLY'] },
     { calendar: calendarFixture, labels: labelsFixture },
   );
-  assert.equal(result.ok, false);
-  assert.match(result.issues.join('\n'), /FREQ=WEEKLY/);
+  assert.equal(result.ok, true);
+  assert.deepEqual(result.value.recurrence, { rrule: ['RRULE:FREQ=WEEKLY'] });
+  assert.equal(result.value.warnings.includes('recurrence-unsupported'), false);
 });
 
-test('MONTHLY with BYSETPOS는 unsupported로 fail한다 (비기본 패턴)', () => {
+test('YEARLY는 통과한다 (#61, 실데이터 생일/기념일류)', () => {
+  const result = normalizeRawTimeTreeEvent(
+    { ...timedEventFixture, recurrences: ['RRULE:FREQ=YEARLY'] },
+    { calendar: calendarFixture, labels: labelsFixture },
+  );
+  assert.equal(result.ok, true);
+  assert.deepEqual(result.value.recurrence, { rrule: ['RRULE:FREQ=YEARLY'] });
+});
+
+test('MONTHLY with BYSETPOS는 통과한다 (#61, Google honor)', () => {
   const result = normalizeRawTimeTreeEvent(
     { ...timedEventFixture, recurrences: ['RRULE:FREQ=MONTHLY;BYDAY=MO;BYSETPOS=-1'] },
     { calendar: calendarFixture, labels: labelsFixture },
   );
+  assert.equal(result.ok, true);
+  assert.deepEqual(result.value.recurrence, { rrule: ['RRULE:FREQ=MONTHLY;BYDAY=MO;BYSETPOS=-1'] });
+});
+
+test('DAILY;INTERVAL=2는 통과한다 (modifier 무관)', () => {
+  const result = normalizeRawTimeTreeEvent(
+    { ...timedEventFixture, recurrences: ['RRULE:FREQ=DAILY;INTERVAL=2'] },
+    { calendar: calendarFixture, labels: labelsFixture },
+  );
+  assert.equal(result.ok, true);
+  assert.deepEqual(result.value.recurrence, { rrule: ['RRULE:FREQ=DAILY;INTERVAL=2'] });
+});
+
+test('실데이터 master 형태(RRULE:FREQ=WEEKLY + EXDATE)는 통과한다 (#61)', () => {
+  const result = normalizeRawTimeTreeEvent(
+    { ...timedEventFixture, recurrences: ['RRULE:FREQ=WEEKLY', 'EXDATE:20260708T000000Z'] },
+    { calendar: calendarFixture, labels: labelsFixture },
+  );
+  assert.equal(result.ok, true);
+  assert.deepEqual(result.value.recurrence, {
+    rrule: ['RRULE:FREQ=WEEKLY'],
+    exdate: ['EXDATE:20260708T000000Z'],
+  });
+});
+
+test('FREQ 없는 RRULE은 event-level fail한다', () => {
+  const result = normalizeRawTimeTreeEvent(
+    { ...timedEventFixture, recurrences: ['RRULE:INTERVAL=2'] },
+    { calendar: calendarFixture, labels: labelsFixture },
+  );
   assert.equal(result.ok, false);
-  assert.match(result.issues.join('\n'), /BYSETPOS/);
+  assert.match(result.issues.join('\n'), /INTERVAL=2/);
 });
 
 test('MONTHLY 기본 패턴은 통과한다', () => {

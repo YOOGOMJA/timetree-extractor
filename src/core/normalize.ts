@@ -335,21 +335,17 @@ function normalizeRecurrences(recurrences: string[]): RecurrenceResult {
   return { ok: true, recurrence: hasAnyRule ? recurrence : undefined, warnings: unique(warnings) };
 }
 
-// v1 허용 recurrence subset (ics-normalization-contract.md "Initial recurrence subset"):
-// - FREQ=DAILY: 단순 패턴 통과.
-// - FREQ=WEEKLY: BYDAY 동반 필수 — spec이 'WEEKLY with BYDAY'로 명시.
-// - FREQ=MONTHLY: BYSETPOS 조합 제외(예: 'last Monday') — Google import 안정성 보장.
-// - 그 외 FREQ(YEARLY 등): 미지원 → event-level fail.
+// v1 허용 recurrence subset (#61, ics-normalization-contract.md "Initial recurrence subset"):
+// FREQ가 표준 4종(DAILY/WEEKLY/MONTHLY/YEARLY) 중 하나면 modifier(INTERVAL/COUNT/UNTIL/
+// BYxxx/WKST 등)와 무관하게 통과한다. RFC 5545 valid이고 Google import가 honor하는 패턴.
+// SECONDLY/MINUTELY/HOURLY·미지 FREQ·FREQ 누락은 미지원 → event-level fail(silent emit 금지).
+const SUPPORTED_RRULE_FREQ = new Set(['DAILY', 'WEEKLY', 'MONTHLY', 'YEARLY']);
+
 function isSupportedRRule(rule: string): boolean {
-  if (rule.startsWith('RRULE:FREQ=DAILY')) return true;
-  if (rule.startsWith('RRULE:FREQ=WEEKLY')) {
-    return /(?:^|;)BYDAY=/i.test(rule);
-  }
-  if (rule.startsWith('RRULE:FREQ=MONTHLY')) {
-    if (/(?:^|;)BYSETPOS=/i.test(rule)) return false;
-    return true;
-  }
-  return false;
+  if (!rule.startsWith('RRULE:')) return false;
+  const match = /(?:^|;)FREQ=([A-Za-z]+)/.exec(rule.slice('RRULE:'.length));
+  if (!match) return false;
+  return SUPPORTED_RRULE_FREQ.has(match[1].toUpperCase());
 }
 
 function push(target: NormalizedRecurrence, key: keyof NormalizedRecurrence, value: string): void {
