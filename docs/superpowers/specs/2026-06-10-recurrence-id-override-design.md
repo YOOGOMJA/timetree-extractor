@@ -48,17 +48,18 @@ per-event `normalizeRawTimeTreeEvent`는 순수성을 유지(형제 이벤트를
 
 ## 컴포넌트 설계
 
-### 1. normalize sidecar (additive)
+### 1. NormalizedCalendarEvent 링크 필드 (provider-neutral, additive)
 
-`NormalizationResult`의 `ok: true` variant에 optional `link` 필드를 additive로 추가한다. 기존 37개 `.value` 호출은 무영향.
+별도 sidecar 대신 **링크 입력을 normalized event 본문에 둔다.** 이유: 실제 extension 파이프라인(`sidepanel.tsx`)은 normalize 후 `filterEventsByRange`·`sort`를 **bare `NormalizedCalendarEvent[]`** 로 통과시키므로, result에 붙인 sidecar는 filter 단계에서 탈락한다. 링크 입력이 event에 실리면 filter/sort/link/render가 재배선 없이 동작한다.
+
+normalize는 raw의 `recurringUuid`/`recurStartAt`를 **provider-neutral 필드로 번역**한다(번역은 normalization layer의 책임):
 
 ```ts
-| { ok: true; value: NormalizedCalendarEvent; link: RecurrenceLink; issues: [] }
-
-type RecurrenceLink = { recurringUuid: string | null; recurStartAt: number | null };
+recurrenceGroupId?: string;   // ← raw recurringUuid
+originalStartAt?: number;     // ← raw recurStartAt (epoch ms, 원래 occurrence 시각)
 ```
 
-`recurringUuid`/`recurStartAt`는 raw contract에 이미 존재(#57). normalize는 이를 `link`로 그대로 전달만 한다(해석하지 않음).
+둘 다 optional. 일반 이벤트는 둘 다 absent. `linkRecurringOverrides`가 소비하며, emit에는 쓰이지 않는다(ics.ts는 `recurrenceId`만 emit).
 
 ### 2. `NormalizedCalendarEvent.recurrenceId` (emit용)
 
@@ -68,25 +69,24 @@ emit 전용 필드를 추가한다. 타입은 `NormalizedDateTime`(start/end와 
 recurrenceId?: NormalizedDateTime;
 ```
 
-### 3. `linkRecurringOverrides(items)` (core, pure)
+### 3. `linkRecurringOverrides(events)` (core, pure)
 
-입력: `Array<{ event: NormalizedCalendarEvent; link: RecurrenceLink }>`
-출력: `NormalizedCalendarEvent[]` (uid/recurrenceId/warnings 확정)
+입력/출력 모두 `NormalizedCalendarEvent[]` — `createIcsCalendar(events[])`와 동일한 배열 형태라 호출부가 한 줄(`events = linkRecurringOverrides(events)`)로 끝난다. **반드시 export될 최종 set(즉 range filter 이후) 위에서 호출**한다 — master-presence 판정이 실제 export 내용과 일치해야 하기 때문(filter로 빠진 master는 의도대로 orphan 처리).
 
 규칙:
-1. `recurringUuid == null` 항목은 그대로 통과(일반 이벤트).
-2. 나머지를 `recurringUuid`로 그룹화.
-3. 그룹에서 master(=`recurrence` 존재 && `recurStartAt == null`)를 찾는다.
-4. 각 override(`recurStartAt != null`):
-   - master 정확히 1개 → `event.uid = master.uid`, `event.recurrenceId = formatRecurrenceId(recurStartAt, master)`
+1. `recurrenceGroupId == null` 항목은 그대로 통과(일반 이벤트).
+2. 나머지를 `recurrenceGroupId`로 그룹화.
+3. 그룹에서 master(=`recurrence` 존재 && `originalStartAt == null`)를 찾는다.
+4. 각 override(`originalStartAt != null`):
+   - master 정확히 1개 → `event.uid = master.uid`, `event.recurrenceId = buildRecurrenceId(originalStartAt, master.start)`
    - master 0개 또는 2개 이상(애매) → 단발 uid 유지 + warning `recurrence-override-orphaned`
 5. master·일반 이벤트는 무변경. master를 drop하지 않으므로 "master 동일 export 포함"이 자동 보장.
 
-엣지: `recurringUuid` 보유 but `recurStartAt == null` && `recurrence` 없음인 항목(불명확 멤버)은 override도 master도 아니므로 무변경·warning 없음(일반 이벤트와 구분 불가).
+엣지: `recurrenceGroupId` 보유 but `originalStartAt == null` && `recurrence` 없음인 항목(불명확 멤버)은 override도 master도 아니므로 무변경·warning 없음(일반 이벤트와 구분 불가).
 
-### 4. `formatRecurrenceId(recurStartAt, master)` (정합성 핵심)
+### 4. `buildRecurrenceId(originalStartAt, masterStart)` (정합성 핵심)
 
-RECURRENCE-ID는 master `DTSTART`와 **VALUE/TZID가 일치해야** 한다. override 자신의 (변경된) start가 아니라, `recurStartAt`(원래 슬롯)을 **master의 timezone·all-day 타입**으로 `NormalizedDateTime`을 구성한다. 이렇게 해야 RRULE이 생성하는 원래 occurrence와 매칭된다.
+RECURRENCE-ID는 master `DTSTART`와 **VALUE/TZID가 일치해야** 한다. override 자신의 (변경된) start가 아니라, `originalStartAt`(원래 슬롯)을 **master.start의 timezone·all-day 타입**으로 `NormalizedDateTime`을 구성한다. 이렇게 해야 RRULE이 생성하는 원래 occurrence와 매칭된다.
 
 - all-day master → `RECURRENCE-ID;VALUE=DATE:YYYYMMDD`
 - zoned master → `RECURRENCE-ID;TZID=...:YYYYMMDDTHHMMSS`
@@ -102,7 +102,11 @@ RECURRENCE-ID는 master `DTSTART`와 **VALUE/TZID가 일치해야** 한다. over
 
 ### 7. 배선 (2곳)
 
-`cli/export-preview.ts`, `extension/sidepanel-export-policy.ts`가 normalize 결과의 `{value, link}`를 모아 `linkRecurringOverrides`를 `createIcsCalendar` 직전에 호출하도록 변경.
+normalize loop가 실제로 있는 두 곳에서 `linkRecurringOverrides`를 호출:
+- `cli/export-preview.ts`: normalize loop 직후, `createIcsCalendar` 직전(`normalized = linkRecurringOverrides(normalized)`). range filter 없음 → 전체 set.
+- `extension/sidepanel.tsx`: `filterEventsByRange` **이후**에 호출해야 master-presence가 export 내용과 일치(filter로 빠진 master는 의도대로 orphan 처리).
+
+(`sidepanel-export-policy.ts`는 이미 normalize된 배열만 받으므로 변경 없음.)
 
 ## 에러/fallback 처리
 
