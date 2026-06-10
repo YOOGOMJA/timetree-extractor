@@ -27,6 +27,7 @@
 | 19 | `decisions/0002-implementation-go-no-go.md` | 구현 여부와 허용 범위 결정 |
 | 20 | `decisions/0003-sqlite-engine-boundary.md` | SQLite engine과 reader port 결정 |
 | 21 | `architecture-notes.md` | 검증 후 가능한 browser extension 구조 |
+| 22 | `research/recurrence-id-smoke-runbook.md` | RECURRENCE-ID override(#14)의 실데이터 smoke 검증 절차 (#59) |
 
 ## 문서 작성 규칙
 
