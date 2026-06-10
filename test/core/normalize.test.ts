@@ -371,3 +371,28 @@ test('UID sanitize는 idempotent하다 (같은 입력 → 같은 출력)', () =>
   assert.equal(a.value.uid, b.value.uid);
   assert.match(a.value.uid, /^timetree:1:[\x20-\x7E]+$/u);
 });
+
+test('수정된 반복 instance: recurringUuid/recurStartAt를 neutral 필드로 번역한다', () => {
+  const result = normalizeRawTimeTreeEvent({
+    id: 'evt-override', calendarId: 7, category: 'schedule', allDay: false,
+    title: '회의', startAt: 1767607200000, endAt: 1767610800000,
+    startTimezone: 'Asia/Seoul', endTimezone: 'Asia/Seoul',
+    recurrences: [], recurringUuid: 'grp-abc',
+    recurStartAt: 1767604800000, recurEndAt: 1767608400000,
+  });
+  assert.equal(result.ok, true);
+  assert.equal(result.value.recurrenceGroupId, 'grp-abc');
+  assert.equal(result.value.originalStartAt, 1767604800000);
+  assert.equal(result.value.recurrenceId, undefined);
+});
+
+test('일반 이벤트: 링크 필드는 absent다', () => {
+  const result = normalizeRawTimeTreeEvent({
+    id: 'evt-plain', calendarId: 7, category: 'schedule', allDay: false,
+    title: '회의', startAt: 1767607200000, endAt: 1767610800000,
+    startTimezone: 'Asia/Seoul', endTimezone: 'Asia/Seoul', recurrences: [],
+  });
+  assert.equal(result.ok, true);
+  assert.equal('recurrenceGroupId' in result.value, false);
+  assert.equal('originalStartAt' in result.value, false);
+});

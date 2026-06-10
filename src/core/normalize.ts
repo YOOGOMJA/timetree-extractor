@@ -39,6 +39,12 @@ export type NormalizedCalendarEvent = {
   start: NormalizedDateTime;
   end: NormalizedDateTime;
   recurrence?: NormalizedRecurrence;
+  /** 같은 반복 series를 묶는 그룹 키 (raw recurringUuid 번역). 일반 이벤트엔 absent. */
+  recurrenceGroupId?: string;
+  /** 수정된 반복 instance의 *원래* occurrence 시각(epoch ms, raw recurStartAt 번역). */
+  originalStartAt?: number;
+  /** export 시 RECURRENCE-ID로 emit되는 원래 occurrence (linkRecurringOverrides가 설정). */
+  recurrenceId?: NormalizedDateTime;
   labels?: string[];
   reminders?: NormalizedReminder[];
   source: {
@@ -112,6 +118,8 @@ export function normalizeRawTimeTreeEvent(rawEvent: unknown, context: Normalizat
   if (labels.length > 0) value.labels = labels;
   if (recurrence) value.recurrence = recurrence;
   if (alertResult.reminders.length > 0) value.reminders = alertResult.reminders;
+  if (event.recurringUuid != null) value.recurrenceGroupId = event.recurringUuid;
+  if (event.recurStartAt != null) value.originalStartAt = event.recurStartAt;
 
   return { ok: true, value, issues: [] };
 }
@@ -352,7 +360,7 @@ function push(target: NormalizedRecurrence, key: keyof NormalizedRecurrence, val
 // UTC components (not local components) keeps the emitted VALUE=DATE boundary
 // timezone-stable, so an export run on a non-UTC machine cannot shift the date
 // by a day (which previously collapsed DTEND onto DTSTART).
-function toUtcDate(epochMs: number): string {
+export function toUtcDate(epochMs: number): string {
   const d = new Date(epochMs);
   const y = d.getUTCFullYear();
   const m = String(d.getUTCMonth() + 1).padStart(2, '0');
