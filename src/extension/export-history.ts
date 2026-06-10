@@ -14,6 +14,14 @@ export type ExportHistoryRecord = {
 
 export const HISTORY_MAX = 20;
 
+// ECMAScript Date가 표현 가능한 최대 epoch ms. 이를 넘으면 new Date()/Intl.format이
+// Invalid time value(RangeError)를 던지므로, 손상 timestamp를 여기서 걸러야 한다.
+const MAX_TIMESTAMP_MS = 8_640_000_000_000_000;
+
+export function isValidTimestamp(value: unknown): value is number {
+  return typeof value === 'number' && Number.isInteger(value) && value >= 0 && value <= MAX_TIMESTAMP_MS;
+}
+
 // 새 record를 맨 앞에 추가하고 상한 초과분을 절단한다. 입력은 비변형(새 배열 반환).
 export function prependRecord(
   records: ExportHistoryRecord[],

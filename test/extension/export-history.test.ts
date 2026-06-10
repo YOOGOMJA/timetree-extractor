@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { prependRecord, HISTORY_MAX, type ExportHistoryRecord } from '../../src/extension/export-history.js';
+import { prependRecord, HISTORY_MAX, isValidTimestamp, type ExportHistoryRecord } from '../../src/extension/export-history.js';
 
 function rec(at: number): ExportHistoryRecord {
   return { at, calendarCount: 1, fromDate: '2026-06-01', toDate: '2026-07-01', format: 'ics', exportCount: 10, warningCount: 0, filename: `f-${at}.ics` };
@@ -31,4 +31,16 @@ test('prependRecord: 커스텀 max', () => {
   const out = prependRecord([rec(1), rec(2)], rec(3), 2);
   assert.equal(out.length, 2);
   assert.deepEqual(out.map((r) => r.at), [3, 1]);
+});
+
+test('isValidTimestamp: 0~Date범위 정수만 통과', () => {
+  assert.equal(isValidTimestamp(Date.now()), true);
+  assert.equal(isValidTimestamp(0), true);
+  assert.equal(isValidTimestamp(8_640_000_000_000_000), true);
+  assert.equal(isValidTimestamp(8_640_000_000_000_001), false); // Date 범위 초과
+  assert.equal(isValidTimestamp(-1), false);
+  assert.equal(isValidTimestamp(1.5), false);
+  assert.equal(isValidTimestamp(NaN), false);
+  assert.equal(isValidTimestamp(Infinity), false);
+  assert.equal(isValidTimestamp('123'), false);
 });
