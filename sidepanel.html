@@ -39,6 +39,10 @@
     #event-search { flex: 1; min-width: 0; padding: 6px 8px; border: 1px solid #d1d5db; border-radius: 4px; font-size: 13px; }
     .detail-scroll { height: 360px; overflow-y: auto; overscroll-behavior: contain; border: 1px solid #f3f4f6; border-radius: 6px; }
     .empty-note { color: #6b7280; font-size: 12px; padding: 16px; text-align: center; }
+    .recent-head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 8px; }
+    .link-btn { background: none; border: none; color: #6b7280; font-size: 11px; padding: 0; text-decoration: underline; }
+    .recent-item { padding: 6px 0; border-bottom: 1px solid #f3f4f6; font-size: 12px; color: #374151; font-variant-numeric: tabular-nums; }
+    .recent-item .meta { color: #9ca3af; font-size: 11px; }
     .radio-group { display: flex; gap: 12px; margin-bottom: 12px; }
     .radio-group label { display: flex; align-items: center; gap: 6px; margin: 0; }
     .error-box { background: #fef2f2; border: 1px solid #fca5a5; border-radius: 6px; padding: 12px; color: #dc2626; font-size: 13px; }
@@ -68,6 +72,13 @@
 
     <div id="state-idle" class="section">
       <button id="btn-load-calendars" class="btn-primary">캘린더 불러오기</button>
+      <div id="recent-section" class="section" style="margin-top:20px" hidden>
+        <div class="recent-head">
+          <p class="eyebrow" style="margin:0">최근 내보내기</p>
+          <button id="btn-clear-history" class="link-btn">기록 지우기</button>
+        </div>
+        <div id="recent-list"></div>
+      </div>
     </div>
 
     <div id="state-loading" class="section" hidden>
