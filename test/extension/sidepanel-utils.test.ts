@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { escapeHtml, toIsoDate, errorMessage } from '../../src/extension/sidepanel-utils.js';
+import { escapeHtml, toIsoDate, errorMessage, isTimetreeUrl } from '../../src/extension/sidepanel-utils.js';
 
 // escapeHtml
 test('escapeHtml: & < > " 를 엔티티로 변환한다', () => {
@@ -47,4 +47,19 @@ test('errorMessage: 숫자는 문자열로 변환한다', () => {
 
 test('errorMessage: null은 "null"을 반환한다', () => {
   assert.equal(errorMessage(null), 'null');
+});
+
+// isTimetreeUrl (#67)
+test('isTimetreeUrl: timetreeapp.com origin만 통과한다', () => {
+  assert.equal(isTimetreeUrl('https://timetreeapp.com'), true);
+  assert.equal(isTimetreeUrl('https://timetreeapp.com/calendars/abc'), true);
+});
+
+test('isTimetreeUrl: http/서브도메인 위장/타 도메인/undefined를 거부한다', () => {
+  assert.equal(isTimetreeUrl('http://timetreeapp.com/calendars'), false);
+  assert.equal(isTimetreeUrl('https://timetreeapp.com.evil.com/x'), false);
+  assert.equal(isTimetreeUrl('https://evil.com/https://timetreeapp.com'), false);
+  assert.equal(isTimetreeUrl('https://www.timetreeapp.com/'), false);
+  assert.equal(isTimetreeUrl(undefined), false);
+  assert.equal(isTimetreeUrl(''), false);
 });
