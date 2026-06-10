@@ -10,6 +10,9 @@
     h1 { font-size: 16px; font-weight: 600; margin-bottom: 16px; }
     h2 { font-size: 13px; font-weight: 600; margin-bottom: 8px; color: #444; }
     button { cursor: pointer; padding: 8px 14px; border-radius: 6px; border: none; font-size: 13px; }
+    button:focus-visible, input:focus-visible, a:focus-visible { outline: 2px solid #2563eb; outline-offset: 2px; }
+    .description { color: #6b7280; font-size: 12px; margin: -10px 0 14px; }
+    .context-line { color: #16a34a; font-size: 12px; margin-bottom: 12px; }
     .btn-primary { background: #2563eb; color: #fff; }
     .btn-primary:disabled { background: #93c5fd; cursor: not-allowed; }
     .btn-secondary { background: #f3f4f6; color: #111; border: 1px solid #d1d5db; }
@@ -40,19 +43,22 @@
 </head>
 <body>
   <h1>TimeTree Exporter</h1>
+  <p class="description">로그인된 TimeTree 캘린더를 ICS/JSON 파일로 내보냅니다. 데이터는 이 기기에만 저장됩니다.</p>
 
   <div id="panel-not-timetree" hidden>
-    <p style="color:#6b7280">TimeTree 페이지에서 열어주세요.<br><code>https://timetreeapp.com</code></p>
+    <p style="color:#6b7280; margin-bottom:12px">TimeTree 페이지에서 사용할 수 있습니다.<br>아래 버튼으로 이동하면 자동으로 연결됩니다.</p>
+    <button id="btn-open-timetree" class="btn-primary">TimeTree 열기</button>
   </div>
 
   <div id="panel-main" hidden>
+    <p id="context-line" class="context-line" aria-live="polite">연결됨 — timetreeapp.com</p>
 
     <div id="state-idle" class="section">
       <button id="btn-load-calendars" class="btn-primary">캘린더 불러오기</button>
     </div>
 
     <div id="state-loading" class="section" hidden>
-      <p class="spinner">불러오는 중…</p>
+      <p class="spinner" role="status" aria-live="polite">불러오는 중…</p>
     </div>
 
     <div id="state-setup" class="section" hidden>

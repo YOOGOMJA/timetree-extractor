@@ -9,7 +9,7 @@ import type {
   FetchEventsResponse,
   FetchLabelsResponse,
 } from './message-protocol.js';
-import { escapeHtml, toIsoDate, errorMessage } from './sidepanel-utils.js';
+import { escapeHtml, toIsoDate, errorMessage, isTimetreeUrl } from './sidepanel-utils.js';
 import {
   parseDateRange,
   filterEventsByRange,
@@ -29,12 +29,17 @@ async function sendToContentScript<T>(request: ExtensionRequest): Promise<T> {
 
 async function isOnTimetree(): Promise<boolean> {
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-  return (tab?.url ?? '').startsWith('https://timetreeapp.com');
+  return isTimetreeUrl(tab?.url);
 }
 
 type State = 'idle' | 'loading' | 'setup' | 'results' | 'error';
 
+// 자동 로드 가드(#67): currentState가 idle일 때만 자동 로드를 1회 시도한다.
+let currentState: State = 'idle';
+let autoLoadAttempted = false;
+
 function showState(state: State): void {
+  currentState = state;
   const panels: State[] = ['idle', 'loading', 'setup', 'results', 'error'];
   for (const s of panels) {
     document.getElementById(`state-${s}`)?.toggleAttribute('hidden', s !== state);
@@ -151,11 +156,17 @@ function getSelectedFormat(): 'ics' | 'json' {
 let lastNormalized: NormalizedCalendarEvent[] = [];
 let lastTotalFetched = 0;
 
-async function loadCalendars(): Promise<void> {
+// silentFallback(#67): 패널 진입 자동 로드에서 실패 시 에러 화면 대신 idle(수동 버튼)로
+// 조용히 복귀한다 — 페이지 로딩 중 패널을 여는 흔한 케이스에서 겁주지 않기 위함.
+async function loadCalendars(options: { silentFallback?: boolean } = {}): Promise<void> {
   showState('loading');
   try {
     const res = await sendToContentScript<FetchCalendarsResponse>({ type: 'FETCH_CALENDARS' });
     if (!res.ok) {
+      if (options.silentFallback) {
+        showState('idle');
+        return;
+      }
       showError(`캘린더 로드 실패: ${res.issues.join(', ')}`);
       return;
     }
@@ -170,6 +181,10 @@ async function loadCalendars(): Promise<void> {
 
     showState('setup');
   } catch (err) {
+    if (options.silentFallback) {
+      showState('idle');
+      return;
+    }
     showError(`오류: ${errorMessage(err)}`);
   }
 }
@@ -319,7 +334,11 @@ async function exportEvents(): Promise<void> {
   downloadFile(decision.content, decision.filename, decision.mimeType);
 }
 
-document.addEventListener('DOMContentLoaded', async () => {
+// 활성 탭 기준으로 TimeTree 여부를 재평가해 패널을 토글한다(#67). panel-main 내부의
+// state-* 는 건드리지 않으므로, TimeTree를 떠났다 돌아와도 진행 상태가 보존된다.
+// TimeTree이고 아직 아무것도 안 한 상태(idle)면 캘린더를 1회 자동 로드한다 —
+// 패널을 연 것 자체가 사용자 액션이므로 background polling이 아니다.
+async function refreshPanelForActiveTab(): Promise<void> {
   let onTimetree = false;
   try {
     onTimetree = await isOnTimetree();
@@ -328,7 +347,36 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
   document.getElementById('panel-not-timetree')?.toggleAttribute('hidden', onTimetree);
   document.getElementById('panel-main')?.toggleAttribute('hidden', !onTimetree);
-  if (!onTimetree) return;
+
+  if (onTimetree && currentState === 'idle' && !autoLoadAttempted) {
+    autoLoadAttempted = true;
+    await loadCalendars({ silentFallback: true });
+  }
+}
+
+// 기존 TimeTree 탭이 있으면 포커스, 없으면 새 탭으로 연다(#67). 이동이 완료되면
+// onUpdated/onActivated 리스너가 패널을 자동 전환한다.
+async function openTimetreeTab(): Promise<void> {
+  try {
+    const existing = await chrome.tabs.query({ url: 'https://timetreeapp.com/*' });
+    const tab = existing[0];
+    if (tab?.id != null) {
+      await chrome.tabs.update(tab.id, { active: true });
+      if (tab.windowId != null) await chrome.windows.update(tab.windowId, { focused: true });
+      return;
+    }
+    await chrome.tabs.create({ url: 'https://timetreeapp.com/calendars' });
+  } catch {
+    // 탭 제어 실패 시 조용히 무시 — 사용자가 직접 이동하면 리스너가 처리한다.
+  }
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  // 버튼 리스너는 TimeTree 여부와 무관하게 항상 연결한다 — 이전 구조는 비-TimeTree에서
+  // early return해 패널이 세션 내내 죽는 버그가 있었다(#67).
+  document.getElementById('btn-open-timetree')?.addEventListener('click', () => {
+    openTimetreeTab();
+  });
 
   document.getElementById('btn-load-calendars')?.addEventListener('click', () => {
     loadCalendars();
@@ -353,5 +401,16 @@ document.addEventListener('DOMContentLoaded', async () => {
     lastTotalFetched = 0;
     showState('idle');
   });
+
+  chrome.tabs.onActivated.addListener(() => {
+    refreshPanelForActiveTab();
+  });
+  chrome.tabs.onUpdated.addListener((_tabId, changeInfo) => {
+    if (changeInfo.url != null || changeInfo.status === 'complete') {
+      refreshPanelForActiveTab();
+    }
+  });
+
+  refreshPanelForActiveTab();
 });
 
