@@ -54,6 +54,29 @@ test('reports normalization failures without dropping the eventCount', () => {
   assert.equal(summary.veventCount, 1);
 });
 
+test('master+override raw → vevent 2개, 이벤트 드롭 없음', () => {
+  const base = { calendarId: 7, category: 'schedule', allDay: false,
+    startTimezone: 'Asia/Seoul', endTimezone: 'Asia/Seoul' };
+  const summary = createExportPreview({ rawEvents: [
+    { ...base, id: 'm', title: 'M', startAt: 1767000000000, endAt: 1767003600000,
+      recurrences: ['RRULE:FREQ=WEEKLY;BYDAY=MO'], recurringUuid: 'g1' },
+    { ...base, id: 'o', title: 'O', startAt: 1767607200000, endAt: 1767610800000,
+      recurrences: [], recurringUuid: 'g1', recurStartAt: 1767604800000 },
+  ]});
+  assert.equal(summary.normalizedCount, 2);
+  assert.equal(summary.veventCount, 2);
+});
+
+test('master 없는 override → recurrence-override-orphaned warning 집계', () => {
+  const summary = createExportPreview({ rawEvents: [
+    { id: 'o', calendarId: 7, category: 'schedule', allDay: false, title: 'O',
+      startAt: 1767607200000, endAt: 1767610800000,
+      startTimezone: 'Asia/Seoul', endTimezone: 'Asia/Seoul',
+      recurrences: [], recurringUuid: 'g1', recurStartAt: 1767604800000 },
+  ]});
+  assert.equal(summary.warningCounts['recurrence-override-orphaned'], 1);
+});
+
 test('summary does not leak raw event values', () => {
   const summary = createExportPreview({
     rawEvents: [

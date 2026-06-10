@@ -4,6 +4,7 @@ import {
   type NormalizationContext,
   type NormalizedCalendarEvent,
 } from '../core/normalize.js';
+import { linkRecurringOverrides } from '../core/recurrence-link.js';
 
 export type ExportPreviewSummary = {
   eventCount: number;
@@ -30,12 +31,16 @@ export function createExportPreview(input: CreateExportPreviewInput): ExportPrev
     const result = normalizeRawTimeTreeEvent(raw, input.context);
     if (!result.ok) continue;
     normalized.push(result.value);
-    for (const warning of result.value.warnings) {
+  }
+
+  const linked = linkRecurringOverrides(normalized);
+  for (const event of linked) {
+    for (const warning of event.warnings) {
       warningCounts[warning] = (warningCounts[warning] ?? 0) + 1;
     }
   }
 
-  const ics = createIcsCalendar(normalized, input.now ? { now: input.now } : {});
+  const ics = createIcsCalendar(linked, input.now ? { now: input.now } : {});
   const lines = ics.split('\r\n').filter((line) => line.length > 0);
 
   return {

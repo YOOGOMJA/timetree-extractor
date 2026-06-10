@@ -92,6 +92,12 @@ normalize가 통과시키는 RRULE은 다음 패턴으로 제한한다 (#27에�
 
 EXRULE은 위 정책에서 제외 — RFC 5545에서 deprecated이고 Google import는 무시하지만 Apple/Outlook이 honor하므로 emit을 유지한다 (`v1-export-policy.md` "EXRULE 보존"). `recurrence-unsupported` warning은 동반.
 
+## Recurring instance override (RECURRENCE-ID)
+
+수정된 반복 instance(특정 회차만 변경)는 `recurrenceGroupId`(raw `recurringUuid`)로 master와 묶는다. master가 같은 export에 **정확히 1개** 있으면 override는 master UID를 공유하고, `originalStartAt`(raw `recurStartAt`, 원래 occurrence 시각)을 **master DTSTART의 VALUE/TZID로** 포맷해 `RECURRENCE-ID`를 emit한다(RRULE이 생성하는 원래 슬롯과 매칭). master가 없거나 2개 이상(애매)이면 단발 UID를 유지하고 `recurrence-override-orphaned` warning을 붙인다 — 현행과 동일 출력이라 data-loss 0이다.
+
+이 그룹화/master-presence 판정은 per-event normalize가 아니라 export될 **최종 set(range filter 이후)** 위에서 `linkRecurringOverrides`가 수행한다. master는 절대 drop하지 않아 "master 동일 export 포함"이 보장된다. 단, `recurringUuid`/`recurStartAt`의 실데이터 의미론(어떤 값이 master를 가리키는지)은 미검증 가정이며 별도 후속으로 확인한다.
+
 ## 결론
 
 `ICS`는 두 번째 구현 단계다. 첫 구현은 `RawTimeTreeEvent -> NormalizedCalendarEvent` 변환과 warning/fail policy까지이며, 실제 `.ics` file 생성은 P0/P1 fixture가 안정화된 뒤 시작한다.

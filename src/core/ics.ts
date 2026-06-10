@@ -154,6 +154,7 @@ function createIcsEventLines(event: NormalizedCalendarEvent, timestamp: string):
     `SUMMARY:${escapeText(event.title)}`,
     formatDateTimeLine('DTSTART', event.start),
     formatDateTimeLine('DTEND', event.end),
+    ...(event.recurrenceId ? [formatDateTimeLine('RECURRENCE-ID', event.recurrenceId)] : []),
   ];
 
   const description = composeDescription(event);
@@ -185,7 +186,7 @@ function composeDescription(event: NormalizedCalendarEvent): string {
   return `${base}\n\n${extra.join('\n')}`;
 }
 
-function formatDateTimeLine(name: 'DTSTART' | 'DTEND', value: NormalizedDateTime): string {
+function formatDateTimeLine(name: 'DTSTART' | 'DTEND' | 'RECURRENCE-ID', value: NormalizedDateTime): string {
   if (value.kind === 'date') return `${name};VALUE=DATE:${value.date.replaceAll('-', '')}`;
   // UTC zone은 RFC 5545 §3.3.5 canonical Z form으로 emit한다. 'TZID=UTC'는
   // redundant이고 일부 strict parser가 거부할 수 있다 (cycle-2 review).

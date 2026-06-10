@@ -1,5 +1,6 @@
 import { render } from 'preact';
 import { normalizeRawTimeTreeEvent } from '../core/normalize.js';
+import { linkRecurringOverrides } from '../core/recurrence-link.js';
 import type { RawTimeTreeCalendar, RawTimeTreeEvent, RawTimeTreeLabel } from '../core/contracts.js';
 import type { NormalizedCalendarEvent } from '../core/normalize.js';
 import type {
@@ -237,7 +238,7 @@ async function analyzeEvents(): Promise<void> {
     normalizedAll.push(result.value);
   }
 
-  const normalized = filterEventsByRange(normalizedAll, range);
+  const normalized = linkRecurringOverrides(filterEventsByRange(normalizedAll, range));
   normalized.sort((a, b) => {
     const aMs = a.start.kind === 'date-time' ? a.start.epochMs : new Date(`${a.start.date}T00:00:00`).getTime();
     const bMs = b.start.kind === 'date-time' ? b.start.epochMs : new Date(`${b.start.date}T00:00:00`).getTime();

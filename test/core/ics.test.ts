@@ -444,3 +444,37 @@ test('VALARM: 음수 정수가 아닌 값은 skip, 유효한 다른 reminder는 
   assert.equal(valarmBlocks, 1);
   assert.match(ics, /TRIGGER:-PT45M/);
 });
+
+test('recurrenceId가 있으면 RECURRENCE-ID 라인을 emit한다 (zoned)', () => {
+  const ev: NormalizedCalendarEvent = {
+    uid: 'timetree:7:evt-master', calendarName: 'cal', title: '회의',
+    start: { kind: 'date-time', epochMs: 1767607200000, timezone: 'Asia/Seoul' },
+    end: { kind: 'date-time', epochMs: 1767610800000, timezone: 'Asia/Seoul' },
+    recurrenceId: { kind: 'date-time', epochMs: 1767604800000, timezone: 'Asia/Seoul' },
+    source: { provider: 'timetree', eventId: 'evt-master', calendarId: 7 }, warnings: [],
+  };
+  const ics = createIcsCalendar([ev]);
+  assert.match(ics, /RECURRENCE-ID;TZID=Asia\/Seoul:\d{8}T\d{6}/);
+});
+
+test('all-day recurrenceId는 VALUE=DATE로 emit한다', () => {
+  const ev: NormalizedCalendarEvent = {
+    uid: 'timetree:7:evt-master', calendarName: 'cal', title: '회의',
+    start: { kind: 'date', date: '2026-01-12' }, end: { kind: 'date', date: '2026-01-13' },
+    recurrenceId: { kind: 'date', date: '2026-01-05' },
+    source: { provider: 'timetree', eventId: 'evt-master', calendarId: 7 }, warnings: [],
+  };
+  const ics = createIcsCalendar([ev]);
+  assert.match(ics, /RECURRENCE-ID;VALUE=DATE:20260105/);
+});
+
+test('recurrenceId가 없으면 RECURRENCE-ID 라인이 없다', () => {
+  const ev: NormalizedCalendarEvent = {
+    uid: 'timetree:7:evt-plain', calendarName: 'cal', title: '단발',
+    start: { kind: 'date-time', epochMs: 1767607200000, timezone: 'Asia/Seoul' },
+    end: { kind: 'date-time', epochMs: 1767610800000, timezone: 'Asia/Seoul' },
+    source: { provider: 'timetree', eventId: 'evt-plain', calendarId: 7 }, warnings: [],
+  };
+  const ics = createIcsCalendar([ev]);
+  assert.doesNotMatch(ics, /RECURRENCE-ID/);
+});
