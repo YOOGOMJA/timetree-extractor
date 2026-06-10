@@ -48,7 +48,7 @@
 
 ### 구현됨
 
-- `recurringUuid → RECURRENCE-ID`: issue #14. 수정된 반복 instance를 master와 동일 UID로 묶고 `originalStartAt`(raw `recurStartAt`)을 master DTSTART의 VALUE/TZID로 포맷해 `RECURRENCE-ID`를 emit한다. master가 같은 export(range filter 이후 set)에 없거나 애매하면 단발 UID 유지 + `recurrence-override-orphaned` warning으로 fallback(data-loss 0). 실데이터 의미론(어떤 값이 master/override를 가리키는지)은 별도 후속으로 검증한다.
+- `recurringUuid → RECURRENCE-ID`: issue #14/#62. override의 `recurring_uuid`가 master의 `id`를 가리킨다(실관찰). 미이동 override(start가 master EXDATE 슬롯과 일치)는 master 동일 UID + `RECURRENCE-ID`(=override.start)로 묶고 그 EXDATE를 master에서 제거한다. 이동/매칭 실패는 독립 이벤트로 두며(master EXDATE가 슬롯을 비워 비파손), master 부재는 `recurrence-override-orphaned` warning. `recur_start_at`은 웹 API에 없어 미사용.
 
 ### 의도적으로 제외 (정책 + Google 모두)
 
@@ -79,8 +79,8 @@
 | `recurrences` (`RRULE`/`RDATE`/`EXDATE`) | `recurrence` | `RRULE`/`RDATE`/`EXDATE` | emit (supported subset만) |
 | `recurrences` (`EXRULE`) | `recurrence.exrule` | `EXRULE` | emit (Google은 무시, Apple/Outlook 위해 보존, `recurrence-unsupported` 유지) |
 | `alerts` | `reminders` | `VALARM` | emit (`ACTION:DISPLAY`, relative `TRIGGER`) |
-| `recurringUuid` | `recurrenceGroupId` | `RECURRENCE-ID` | emit (master 동일 UID 그룹, 부재/애매 시 `recurrence-override-orphaned` fallback) (#14) |
-| `recurStartAt` | `originalStartAt` → `recurrenceId` | `RECURRENCE-ID` 값 | emit (master tz/VALUE 타입으로 포맷) (#14) |
+| `recurringUuid` | `recurrenceGroupId` (→ master.id) | `RECURRENCE-ID` | emit (미이동 override만 master UID 링크 + master EXDATE 제거, 이동/부재는 독립/orphan) (#14/#62) |
+| `recurStartAt` | — (웹 API 없음) | — | 링크 미사용; 원래 슬롯은 master EXDATE로 판정 (#62) |
 | `attendees` | warning만 | — | drop (`participant-omitted`) |
 | `attachment` / `files` | warning만 | — | drop (`attachment-omitted`) |
 | per-event color | — | — | drop |
