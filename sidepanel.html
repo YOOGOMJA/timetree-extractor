@@ -3,8 +3,11 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="color-scheme" content="light">
+  <meta name="theme-color" content="#ffffff">
   <title>TimeTree Exporter</title>
   <style>
+    html { color-scheme: light; }
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body { font-family: system-ui, sans-serif; font-size: 14px; color: #111; background: #fff; padding: 16px; }
     h1 { font-size: 16px; font-weight: 600; margin-bottom: 16px; }
@@ -50,7 +53,7 @@
     dialog#warning-modal { border: 1px solid #d1d5db; border-radius: 8px; padding: 0; max-width: 360px; }
     dialog#warning-modal::backdrop { background: rgba(0,0,0,0.4); }
     .modal-header { padding: 12px 16px; border-bottom: 1px solid #e5e7eb; font-weight: 600; font-size: 14px; }
-    .modal-body { padding: 16px; font-size: 13px; line-height: 1.5; color: #374151; }
+    .modal-body { padding: 16px; font-size: 13px; line-height: 1.5; color: #374151; overscroll-behavior: contain; max-height: 60vh; overflow-y: auto; }
     .modal-body p { margin-bottom: 12px; }
     .modal-consent { display: flex; align-items: flex-start; gap: 8px; margin-top: 12px; padding: 8px; background: #fef3c7; border-radius: 4px; }
     .modal-consent input { margin-top: 2px; }
@@ -92,8 +95,8 @@
       </div>
       <div class="section">
         <h2>기간</h2>
-        <label>시작일<input type="date" id="date-from"></label>
-        <label style="margin-top:8px">종료일<input type="date" id="date-to"></label>
+        <label>시작일<input type="date" id="date-from" name="date-from" autocomplete="off"></label>
+        <label style="margin-top:8px">종료일<input type="date" id="date-to" name="date-to" autocomplete="off"></label>
       </div>
       <button id="btn-analyze" class="btn-primary">분석</button>
     </div>

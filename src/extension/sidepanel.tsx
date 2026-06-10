@@ -65,7 +65,8 @@ function getDateRangeMs(): { fromMs: number; toMs: number } | null {
 
 function formatEventDate(event: NormalizedCalendarEvent): string {
   if (event.start.kind === 'date') return event.start.date;
-  return new Date(event.start.epochMs).toLocaleString('ko-KR', {
+  // 로케일은 사용자 환경에 위임(undefined) — 하드코딩 'ko-KR' 제거(#70 i18n).
+  return new Date(event.start.epochMs).toLocaleString(undefined, {
     year: 'numeric', month: '2-digit', day: '2-digit',
     hour: '2-digit', minute: '2-digit',
   });
