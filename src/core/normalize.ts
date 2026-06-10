@@ -9,6 +9,7 @@ export const NORMALIZATION_WARNING_VALUES = [
   'title-empty',
   'reminder-unsupported',
   'url-invalid',
+  'recurrence-override-orphaned',
 ] as const;
 
 export type NormalizationWarning = (typeof NORMALIZATION_WARNING_VALUES)[number];

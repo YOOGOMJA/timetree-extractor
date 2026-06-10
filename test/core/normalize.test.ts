@@ -396,3 +396,7 @@ test('일반 이벤트: 링크 필드는 absent다', () => {
   assert.equal('recurrenceGroupId' in result.value, false);
   assert.equal('originalStartAt' in result.value, false);
 });
+
+test('NORMALIZATION_WARNING_VALUES는 recurrence-override-orphaned를 포함한다', () => {
+  assert.ok(NORMALIZATION_WARNING_VALUES.includes('recurrence-override-orphaned'));
+});
