@@ -17,7 +17,8 @@ import {
   decideExport,
 } from './sidepanel-export-policy.js';
 import { CalendarList } from './components/CalendarList.js';
-import { EventPreviewList } from './components/EventPreviewList.js';
+import { describeWarning } from './warning-copy.js';
+import { computeVirtualWindow } from './virtual-window.js';
 
 async function sendToContentScript<T>(request: ExtensionRequest): Promise<T> {
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
@@ -32,7 +33,7 @@ async function isOnTimetree(): Promise<boolean> {
   return isTimetreeUrl(tab?.url);
 }
 
-type State = 'idle' | 'loading' | 'setup' | 'results' | 'error';
+type State = 'idle' | 'loading' | 'setup' | 'results' | 'detail' | 'error';
 
 // 자동 로드 가드(#67): currentState가 idle일 때만 자동 로드를 1회 시도한다.
 let currentState: State = 'idle';
@@ -40,7 +41,7 @@ let autoLoadAttempted = false;
 
 function showState(state: State): void {
   currentState = state;
-  const panels: State[] = ['idle', 'loading', 'setup', 'results', 'error'];
+  const panels: State[] = ['idle', 'loading', 'setup', 'results', 'detail', 'error'];
   for (const s of panels) {
     document.getElementById(`state-${s}`)?.toggleAttribute('hidden', s !== state);
   }
@@ -99,41 +100,90 @@ function getSelectedCalendarIds(): number[] {
   return Array.from(selectedCalendarIds);
 }
 
+const DETAIL_ROW_HEIGHT = 48;
+
 function renderResults(
   events: NormalizedCalendarEvent[],
   totalFetched: number,
 ): void {
-  const statsEl = document.getElementById('analysis-stats')!;
-  const warningCounts = aggregateWarnings(events);
-  statsEl.innerHTML = `
-    <div class="stat-row"><span>전체 fetch</span><span>${totalFetched}건</span></div>
-    <div class="stat-row"><span>기간 내 이벤트</span><span>${events.length}건</span></div>
-    <div class="stat-row"><span>일반 이벤트</span><span>${events.filter((e) => !e.recurrence).length}건</span></div>
-    <div class="stat-row"><span>반복 이벤트</span><span>${events.filter((e) => e.recurrence).length}건</span></div>
-  `;
+  // 충실도 hero: 내보낼 N / 전체 M / 제외 D(드롭+범위밖). no-silent-loss를 한눈에.
+  const exportCount = events.length;
+  const dropped = Math.max(0, totalFetched - exportCount);
+  document.getElementById('fid-export')!.textContent = String(exportCount);
+  const subEl = document.getElementById('fid-sub')!;
+  subEl.textContent = '';
+  subEl.append(`전체 ${totalFetched}건`);
+  if (dropped > 0) {
+    const span = document.createElement('span');
+    span.className = 'dropped';
+    span.textContent = `제외 ${dropped}건`;
+    subEl.append(' · ', span);
+  }
+  const ratio = totalFetched > 0 ? Math.round((exportCount / totalFetched) * 100) : 100;
+  (document.getElementById('fid-bar') as HTMLElement).style.width = `${ratio}%`;
 
+  // 경고: enum 코드를 사람 말로(label + hint + 건수).
+  const warningCounts = aggregateWarnings(events);
   const warningsSection = document.getElementById('warnings-section')!;
   const warningsList = document.getElementById('warnings-list')!;
   const warningEntries = Object.entries(warningCounts);
   if (warningEntries.length > 0) {
     warningsList.innerHTML = warningEntries
-      .map(([w, n]) => `<div class="warning-item">${escapeHtml(w)}: ${n}건</div>`)
+      .map(([code, n]) => {
+        const { label, hint } = describeWarning(code);
+        const hintHtml = hint ? `<div class="w-hint">${escapeHtml(hint)}</div>` : '';
+        return `<div class="warning-item"><div class="w-label"><span>${escapeHtml(label)}</span><span class="count">${n}건</span></div>${hintHtml}</div>`;
+      })
       .join('');
     warningsSection.removeAttribute('hidden');
   } else {
     warningsSection.setAttribute('hidden', '');
   }
 
-  const preview = document.getElementById('event-preview')!;
-  const sample = events.slice(0, 20);
-  // Preact `<EventPreviewList>` 로 점진 대체. 시그니처/호출 시점/슬라이스 상한 모두 보존.
-  // 0건 placeholder 분기는 컴포넌트 내부로 이동.
-  render(
-    <EventPreviewList events={sample} formatDate={formatEventDate} />,
-    preview,
-  );
+  document.getElementById('detail-count')!.textContent = String(exportCount);
 
   showState('results');
+}
+
+// --- 상세 목록 (검색 + 가상화) ---
+let detailFiltered: NormalizedCalendarEvent[] = [];
+
+function matchesSearch(event: NormalizedCalendarEvent, query: string): boolean {
+  if (!query) return true;
+  const q = query.toLowerCase();
+  return event.title.toLowerCase().includes(q) || event.calendarName.toLowerCase().includes(q);
+}
+
+function renderDetailWindow(): void {
+  const scroll = document.getElementById('detail-scroll');
+  if (!scroll) return;
+  if (detailFiltered.length === 0) {
+    render(<p class="empty-note">{lastNormalized.length === 0 ? '이벤트가 없습니다.' : '검색 결과가 없습니다.'}</p>, scroll);
+    return;
+  }
+  const win = computeVirtualWindow(scroll.scrollTop, scroll.clientHeight, DETAIL_ROW_HEIGHT, detailFiltered.length);
+  const slice = detailFiltered.slice(win.start, win.end);
+  render(
+    <div style={`padding-top:${win.padTop}px;padding-bottom:${win.padBottom}px`}>
+      {slice.map((event, i) => (
+        <div class="event-item" style={`height:${DETAIL_ROW_HEIGHT}px`} key={win.start + i}>
+          <div class="title">{event.title}</div>
+          <div class="date">{formatEventDate(event)} · {event.calendarName}</div>
+        </div>
+      ))}
+    </div>,
+    scroll,
+  );
+}
+
+function openDetail(): void {
+  const query = (document.getElementById('event-search') as HTMLInputElement | null)?.value ?? '';
+  detailFiltered = lastNormalized.filter((e) => matchesSearch(e, query));
+  showState('detail');
+  // detail-scroll은 showState로 막 보이게 됐으므로 clientHeight가 이제 유효하다.
+  const scroll = document.getElementById('detail-scroll');
+  if (scroll) scroll.scrollTop = 0;
+  renderDetailWindow();
 }
 
 function downloadFile(content: string, filename: string, mimeType: string): void {
@@ -405,6 +455,22 @@ document.addEventListener('DOMContentLoaded', () => {
     lastNormalized = [];
     lastTotalFetched = 0;
     showState('setup');
+  });
+
+  document.getElementById('btn-detail')?.addEventListener('click', () => {
+    openDetail();
+  });
+
+  document.getElementById('btn-detail-back')?.addEventListener('click', () => {
+    showState('results');
+  });
+
+  document.getElementById('event-search')?.addEventListener('input', () => {
+    openDetail();
+  });
+
+  document.getElementById('detail-scroll')?.addEventListener('scroll', () => {
+    renderDetailWindow();
   });
 
   document.getElementById('btn-retry')?.addEventListener('click', () => {
