@@ -20,5 +20,5 @@ export {
   type NormalizedRecurrence,
   type NormalizedReminder,
 } from './normalize.js';
-export { linkRecurringOverrides, buildRecurrenceId } from './recurrence-link.js';
+export { linkRecurringOverrides } from './recurrence-link.js';
 export * from './ics.js';

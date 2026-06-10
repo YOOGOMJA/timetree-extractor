@@ -94,9 +94,16 @@ EXRULE은 위 정책에서 제외 — RFC 5545에서 deprecated이고 Google imp
 
 ## Recurring instance override (RECURRENCE-ID)
 
-수정된 반복 instance(특정 회차만 변경)는 `recurrenceGroupId`(raw `recurringUuid`)로 master와 묶는다. master가 같은 export에 **정확히 1개** 있으면 override는 master UID를 공유하고, `originalStartAt`(raw `recurStartAt`, 원래 occurrence 시각)을 **master DTSTART의 VALUE/TZID로** 포맷해 `RECURRENCE-ID`를 emit한다(RRULE이 생성하는 원래 슬롯과 매칭). master가 없거나 2개 이상(애매)이면 단발 UID를 유지하고 `recurrence-override-orphaned` warning을 붙인다 — 현행과 동일 출력이라 data-loss 0이다.
+수정된 반복 instance(특정 회차만 변경)는 실데이터에서 **별도 이벤트**로 존재하며, 그 `recurrenceGroupId`(raw `recurring_uuid`)가 **master의 `source.eventId`를 가리킨다**(공유 그룹키가 아님 — Claude in Chrome 실관찰, #62). master는 RRULE에 `EXDATE:<수정일>`을 갖는다.
 
-이 그룹화/master-presence 판정은 per-event normalize가 아니라 export될 **최종 set(range filter 이후)** 위에서 `linkRecurringOverrides`가 수행한다. master는 절대 drop하지 않아 "master 동일 export 포함"이 보장된다. 단, `recurringUuid`/`recurStartAt`의 실데이터 의미론(어떤 값이 master를 가리키는지)은 미검증 가정이며 별도 후속으로 확인한다.
+`linkRecurringOverrides`는 export될 **최종 set(range filter 이후)** 위에서:
+
+- override의 `recurrenceGroupId`로 master(`source.eventId` 일치, RRULE 보유)를 찾는다.
+- **미이동** override(override.start가 master의 EXDATE 슬롯 중 하나와 일치)는 master UID를 공유하고 `override.start`를 `RECURRENCE-ID`로 emit하며, **그 EXDATE를 master에서 제거**한다 — RFC 5545상 한 날짜에 EXDATE와 RECURRENCE-ID를 동시에 두면 안 되기 때문.
+- **이동**(start가 어떤 EXDATE와도 불일치) 또는 매칭 실패는 독립 이벤트로 둔다 — master의 EXDATE가 해당 슬롯을 비워두므로 "series(수정일 제외) + 수정일 독립 이벤트"로 비파손(중복·data-loss 없음).
+- master가 export에 없으면 단발 UID 유지 + `recurrence-override-orphaned` warning.
+
+원래 슬롯 시각은 master EXDATE로만 확정 가능하므로, 잘못된 `RECURRENCE-ID`를 절대 emit하지 않도록 **EXDATE 슬롯과 정확히 일치한 override만** 링크한다. `recur_start_at`(=`originalStartAt`)은 웹 API에 없어 링크에서 사용하지 않는다(SQLite 캐시 경로엔 존재할 수 있어 필드는 보존).
 
 ## 결론
 
