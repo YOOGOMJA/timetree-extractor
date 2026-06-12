@@ -36,7 +36,7 @@ async function isOnTimetree(): Promise<boolean> {
   return isTimetreeUrl(tab?.url);
 }
 
-type State = 'idle' | 'loading' | 'setup' | 'results' | 'detail' | 'error';
+type State = 'idle' | 'loading' | 'setup' | 'results' | 'detail' | 'guide' | 'error';
 
 // 자동 로드 가드(#67): currentState가 idle일 때만 자동 로드를 1회 시도한다.
 let currentState: State = 'idle';
@@ -44,7 +44,7 @@ let autoLoadAttempted = false;
 
 function showState(state: State): void {
   currentState = state;
-  const panels: State[] = ['idle', 'loading', 'setup', 'results', 'detail', 'error'];
+  const panels: State[] = ['idle', 'loading', 'setup', 'results', 'detail', 'guide', 'error'];
   for (const s of panels) {
     document.getElementById(`state-${s}`)?.toggleAttribute('hidden', s !== state);
   }
@@ -127,6 +127,15 @@ function renderResults(
   }
   const ratio = totalFetched > 0 ? Math.round((exportCount / totalFetched) * 100) : 100;
   (document.getElementById('fid-bar') as HTMLElement).style.width = `${ratio}%`;
+
+  // 제외가 있으면 "왜·괜찮은지" 안심 카피(#78 P0-3). 마이그레이터의 불안을 행동가능 정보로.
+  const fidNote = document.getElementById('fid-note')!;
+  if (dropped > 0) {
+    fidNote.textContent = '제외된 일정은 Google·Apple 캘린더가 안전하게 읽지 못하는 형식(예: 비표준 반복)이라 빠졌습니다. 보통 안전하며, 자세한 내용은 아래 “발견된 이슈”에서 볼 수 있습니다.';
+    fidNote.removeAttribute('hidden');
+  } else {
+    fidNote.setAttribute('hidden', '');
+  }
 
   renderDashboardSections(events);
   document.getElementById('detail-count')!.textContent = `${exportCount}건`;
@@ -514,6 +523,13 @@ async function exportEvents(): Promise<void> {
     warningCount: warningTotal,
     filename: decision.filename,
   });
+
+  // 마이그레이션 마지막 1마일(#78): ICS는 캘린더 앱에 가져와야 잡이 끝난다 → 가져오기 가이드.
+  // JSON은 캘린더 import 대상이 아니므로 대시보드에 머문다.
+  if (getSelectedFormat() === 'ics') {
+    document.getElementById('guide-file')!.textContent = decision.filename;
+    showState('guide');
+  }
 }
 
 // 활성 탭 기준으로 TimeTree 여부를 재평가해 패널을 토글한다(#67). panel-main 내부의
@@ -595,6 +611,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
   document.getElementById('btn-detail-back')?.addEventListener('click', () => {
     showState('results');
+  });
+
+  document.getElementById('btn-guide-back')?.addEventListener('click', () => {
+    showState('results');
+  });
+
+  document.getElementById('btn-guide-home')?.addEventListener('click', () => {
+    lastNormalized = [];
+    lastTotalFetched = 0;
+    showState('idle');
   });
 
   document.getElementById('event-search')?.addEventListener('input', () => {

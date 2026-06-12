@@ -82,6 +82,20 @@
     .issue-hint { font-size: 11px; color: #b45309; padding: 0 10px 8px; }
     /* 공통 필드(검색 input ↔ 버튼 일관) #75 */
     .field { height: 34px; padding: 0 10px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 13px; background: #fff; color: #0f172a; }
+    /* 제외 안심 + 전송 안 함 신뢰 #78 */
+    .fidelity-note { font-size: 11px; color: #64748b; margin-top: 6px; line-height: 1.5; }
+    .trust-line { display: flex; align-items: flex-start; gap: 6px; font-size: 11px; color: #475569; margin: 10px 0; line-height: 1.5; }
+    .trust-line svg { flex-shrink: 0; margin-top: 1px; }
+    /* 가져오기 가이드 #78 */
+    .guide-done { font-size: 14px; font-weight: 600; color: #0f172a; }
+    .guide-done .file { color: #2563eb; word-break: break-all; }
+    .guide-target { margin-top: 16px; }
+    .guide-target h3 { font-size: 13px; font-weight: 600; color: #0f172a; margin-bottom: 8px; }
+    .guide-steps { list-style: none; counter-reset: step; padding: 0; }
+    .guide-steps li { counter-increment: step; position: relative; padding: 0 0 10px 26px; font-size: 12px; color: #374151; line-height: 1.5; }
+    .guide-steps li::before { content: counter(step); position: absolute; left: 0; top: -1px; width: 18px; height: 18px; border-radius: 50%; background: #eff6ff; color: #2563eb; font-size: 11px; font-weight: 600; display: flex; align-items: center; justify-content: center; }
+    .guide-steps a { color: #2563eb; }
+    .guide-note { font-size: 11px; color: #94a3b8; margin-top: 2px; }
     .dash-cta { width: 100%; text-align: left; display: flex; justify-content: space-between; align-items: center; }
     .dash-cta .cta-count { color: #64748b; font-variant-numeric: tabular-nums; }
     /* 상세: 남은 높이 채우는 flex 레이아웃 #75 */
@@ -141,6 +155,7 @@
         <div class="fidelity-hero"><span id="fid-export">0</span><span class="unit">건 내보내기</span></div>
         <p class="fidelity-sub" id="fid-sub" aria-live="polite"></p>
         <div class="fidelity-bar"><span id="fid-bar"></span></div>
+        <p class="fidelity-note" id="fid-note" hidden></p>
       </div>
       <div id="cal-section" class="dash-section" hidden>
         <p class="eyebrow">캘린더</p>
@@ -163,8 +178,44 @@
           <label><input type="radio" name="format" value="ics" checked> ICS</label>
           <label><input type="radio" name="format" value="json"> JSON</label>
         </div>
+        <p class="trust-line">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="2" aria-hidden="true"><path d="M12 2l8 4v6c0 5-3.5 8-8 10-4.5-2-8-5-8-10V6z"/></svg>
+          <span>내보낸 파일은 이 기기에만 저장되며, 어디에도 전송되지 않습니다.</span>
+        </p>
         <button id="btn-export" class="btn-primary">내보내기</button>
         <button id="btn-back" class="btn-secondary" style="margin-left:8px">처음으로</button>
+      </div>
+    </div>
+
+    <div id="state-guide" hidden>
+      <div class="dash-section">
+        <p class="eyebrow">내보내기 완료</p>
+        <p class="guide-done"><span id="guide-file" class="file"></span> 저장됨</p>
+        <p class="fidelity-note">이제 아래 안내로 캘린더 앱에 가져오면 마이그레이션이 끝납니다.</p>
+      </div>
+      <div class="dash-section">
+        <div class="guide-target">
+          <h3>Google Calendar</h3>
+          <ol class="guide-steps">
+            <li>PC 웹에서 <a id="guide-gcal-link" href="https://calendar.google.com/calendar/u/0/r/settings/export" target="_blank" rel="noopener">Google 캘린더 설정 → 가져오기</a>를 엽니다.</li>
+            <li>“컴퓨터에서 파일 선택”으로 방금 받은 <code>.ics</code> 파일을 고릅니다.</li>
+            <li>가져올 캘린더를 고르고 “가져오기”를 누릅니다.</li>
+          </ol>
+          <p class="guide-note">모바일 앱에서는 가져오기가 안 됩니다 — PC 웹에서 진행하세요.</p>
+        </div>
+        <div class="guide-target">
+          <h3>Apple 캘린더</h3>
+          <ol class="guide-steps">
+            <li>Mac 캘린더 앱에서 <strong>파일 → 가져오기…</strong>를 엽니다.</li>
+            <li>받은 <code>.ics</code> 파일을 선택합니다.</li>
+            <li>추가할 캘린더를 고르고 “가져오기”를 누릅니다.</li>
+          </ol>
+          <p class="guide-note">iPhone에서는 <code>.ics</code> 파일을 탭해 캘린더에 추가할 수 있습니다.</p>
+        </div>
+      </div>
+      <div class="dash-section">
+        <button id="btn-guide-back" class="btn-secondary">대시보드로</button>
+        <button id="btn-guide-home" class="btn-secondary" style="margin-left:8px">처음으로</button>
       </div>
     </div>
 
