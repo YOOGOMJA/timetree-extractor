@@ -362,6 +362,12 @@ async function loadCalendars(options: { silentFallback?: boolean } = {}): Promis
     (document.getElementById('date-from') as HTMLInputElement).value = toIsoDate(fromDate);
     (document.getElementById('date-to') as HTMLInputElement).value = toIsoDate(toDate);
 
+    // 전체 기간이 기본(#84) — 체크 ON + 날짜 입력 비활성으로 동기화.
+    const rangeAll = document.getElementById('range-all') as HTMLInputElement | null;
+    if (rangeAll) rangeAll.checked = true;
+    (document.getElementById('date-from') as HTMLInputElement).disabled = true;
+    (document.getElementById('date-to') as HTMLInputElement).disabled = true;
+
     showState('setup');
   } catch (err) {
     if (options.silentFallback) {
@@ -531,8 +537,12 @@ async function exportEvents(): Promise<void> {
   await recordExport({
     at: Date.now(),
     calendarCount,
-    fromDate: (document.getElementById('date-from') as HTMLInputElement | null)?.value ?? '',
-    toDate: (document.getElementById('date-to') as HTMLInputElement | null)?.value ?? '',
+    fromDate: (document.getElementById('range-all') as HTMLInputElement | null)?.checked
+      ? ''
+      : (document.getElementById('date-from') as HTMLInputElement | null)?.value ?? '',
+    toDate: (document.getElementById('range-all') as HTMLInputElement | null)?.checked
+      ? ''
+      : (document.getElementById('date-to') as HTMLInputElement | null)?.value ?? '',
     format,
     exportCount: lastNormalized.length,
     warningCount: warningTotal,
@@ -608,6 +618,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
   document.getElementById('btn-analyze')?.addEventListener('click', () => {
     analyzeEvents();
+  });
+
+  document.getElementById('range-all')?.addEventListener('change', (e) => {
+    const on = (e.target as HTMLInputElement).checked;
+    for (const id of ['date-from', 'date-to']) {
+      (document.getElementById(id) as HTMLInputElement | null)?.toggleAttribute('disabled', on);
+    }
   });
 
   document.getElementById('btn-export')?.addEventListener('click', () => {
