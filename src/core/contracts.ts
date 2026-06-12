@@ -50,9 +50,10 @@ export type RawTimeTreeEvent = {
   recurStartAt?: number | null;
   recurEndAt?: number | null;
   alerts?: unknown[];
-  attendees?: unknown[];
-  attachment?: unknown;
-  files?: unknown[];
+  // 참가자/첨부의 *내용*(이름·ID·바이너리)은 message boundary를 넘기지 않는다(privacy boundary).
+  // 추출 시점에 개수만 산출해 싣는다(#81). cache 경로의 blob처럼 셀 수 없으면 absent.
+  participantCount?: number;
+  attachmentCount?: number;
   updatedAt?: number;
   createdAt?: number;
   deactivatedAt?: number | null;
@@ -110,6 +111,8 @@ export function validateRawTimeTreeEvent(input: unknown): ValidationResult<RawTi
   optionalNumber(value, 'updatedAt', issues);
   optionalNumber(value, 'createdAt', issues);
   optionalNumber(value, 'deactivatedAt', issues, { allowNull: true });
+  optionalNumber(value, 'participantCount', issues);
+  optionalNumber(value, 'attachmentCount', issues);
 
   if (!Array.isArray(value.recurrences)) {
     issues.push('recurrences must be an array of strings');

@@ -30,8 +30,8 @@ test('aggregates normalization warnings by name', () => {
   const summary = createExportPreview({
     rawEvents: [
       { ...timedEventFixture, title: '' },
-      { ...timedEventFixture, id: 'attach-1', attachment: { uuid: 'x' } },
-      { ...timedEventFixture, id: 'attach-2', files: [{ uuid: 'y' }] },
+      { ...timedEventFixture, id: 'attach-1', attachmentCount: 1 },
+      { ...timedEventFixture, id: 'attach-2', attachmentCount: 1 },
     ],
     context: { calendar: calendarFixture, labels: labelsFixture },
   });
@@ -86,7 +86,8 @@ test('summary does not leak raw event values', () => {
         note: 'SECRET-NOTE-9b21',
         location: 'SECRET-LOCATION-2c80',
         url: 'https://secret.test/SECRET-URL-3df1',
-        attendees: [{ id: 'SECRET-ATTENDEE-44e2' }],
+        // 참가자 *내용*은 더 이상 raw에 실리지 않는다(#81) — 개수만.
+        participantCount: 1,
       },
     ],
     context: { calendar: calendarFixture, labels: labelsFixture },
@@ -98,7 +99,6 @@ test('summary does not leak raw event values', () => {
     'SECRET-NOTE-9b21',
     'SECRET-LOCATION-2c80',
     'SECRET-URL-3df1',
-    'SECRET-ATTENDEE-44e2',
   ]) {
     assert.equal(serialized.includes(needle), false, `summary leaked raw value: ${needle}`);
   }

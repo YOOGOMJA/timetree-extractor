@@ -49,12 +49,13 @@ export async function extractVisibleTimeTreeEvents(input: ExtractVisibleTimeTree
 
 export function mapApiEventToRawTimeTreeEvent(apiEvent: ApiEvent): RawTimeTreeEvent {
   const warnings: ExtractionWarning[] = ['internal-api-surface'];
-  const attendees = arrayOrEmpty(apiEvent.attendees);
-  const files = arrayOrEmpty(apiEvent.files);
-  const attachment = apiEvent.attachment ?? null;
+  // 참가자/첨부의 *내용*은 boundary를 넘기지 않고 개수만 산출한다(#81).
+  const participantCount = arrayOrEmpty(apiEvent.attendees).length;
+  const attachmentCount = arrayOrEmpty(apiEvent.files).length;
+  const hasAttachment = apiEvent.attachment != null || attachmentCount > 0;
 
-  if (attendees.length > 0) warnings.push('shared-calendar-personal-data');
-  if (attachment || files.length > 0) warnings.push('unsupported-attachment');
+  if (participantCount > 0) warnings.push('shared-calendar-personal-data');
+  if (hasAttachment) warnings.push('unsupported-attachment');
 
   return {
     id: stringValue(apiEvent.id),
@@ -74,9 +75,8 @@ export function mapApiEventToRawTimeTreeEvent(apiEvent: ApiEvent): RawTimeTreeEv
     recurStartAt: optionalNullableNumber(apiEvent.recur_start_at),
     recurEndAt: optionalNullableNumber(apiEvent.recur_end_at),
     alerts: arrayOrEmpty(apiEvent.alerts),
-    attendees,
-    attachment,
-    files,
+    participantCount,
+    attachmentCount,
     updatedAt: optionalNumber(apiEvent.updated_at),
     createdAt: optionalNumber(apiEvent.created_at),
     deactivatedAt: optionalNullableNumber(apiEvent.deactivated_at),

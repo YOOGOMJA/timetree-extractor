@@ -18,12 +18,12 @@ const WARNING_COPY: Record<string, WarningCopy> = {
     hint: '표준 반복(매일·매주·매월·매년)만 내보냅니다.',
   },
   'attachment-omitted': {
-    label: '첨부 파일은 제외',
-    hint: '이미지·파일 등 첨부는 내보내기에 포함되지 않습니다.',
+    label: '첨부는 제외(개수만 메모)',
+    hint: '이미지·파일 자체는 빼되 "첨부 N개" 메모로 남깁니다. 파일은 TimeTree에서 직접 받으세요.',
   },
   'participant-omitted': {
-    label: '참가자 정보는 제외',
-    hint: '다른 참가자의 개인정보 보호를 위해 빼고 내보냅니다.',
+    label: '참가자는 인원수만',
+    hint: '개인정보 보호를 위해 참가자 정보는 빼고 "참가자 N명"만 메모로 남깁니다.',
   },
   'title-empty': {
     label: '제목 없는 일정에 임시 제목 사용',

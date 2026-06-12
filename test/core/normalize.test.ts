@@ -246,8 +246,8 @@ test('normalizes an empty title to a placeholder with an explicit warning', () =
 test('warns when participant and attachment data are intentionally omitted', () => {
   const result = normalizeRawTimeTreeEvent({
     ...timedEventFixture,
-    attendees: [{ id: 'synthetic-attendee' }],
-    files: [{ uuid: 'synthetic-file' }],
+    participantCount: 1,
+    attachmentCount: 1,
   }, {
     calendar: calendarFixture,
     labels: labelsFixture,
@@ -439,4 +439,24 @@ test('일반 이벤트: 링크 필드는 absent다', () => {
 
 test('NORMALIZATION_WARNING_VALUES는 recurrence-override-orphaned를 포함한다', () => {
   assert.ok(NORMALIZATION_WARNING_VALUES.includes('recurrence-override-orphaned'));
+});
+
+test('참가자/첨부는 본문엔 안 싣고 수만 보존한다 (#81 메모)', () => {
+  const result = normalizeRawTimeTreeEvent(
+    { ...timedEventFixture, participantCount: 3, attachmentCount: 2 },
+    { calendar: calendarFixture, labels: labelsFixture },
+  );
+  assert.equal(result.ok, true);
+  assert.equal(result.value.participantCount, 3);
+  assert.equal(result.value.attachmentCount, 2);
+  // 실제 참가자/파일 데이터는 싣지 않는다(수만).
+  assert.ok(result.value.warnings.includes('participant-omitted'));
+  assert.ok(result.value.warnings.includes('attachment-omitted'));
+});
+
+test('참가자/첨부 없으면 count 필드 absent', () => {
+  const result = normalizeRawTimeTreeEvent(timedEventFixture, { calendar: calendarFixture, labels: labelsFixture });
+  assert.equal(result.ok, true);
+  assert.equal('participantCount' in result.value, false);
+  assert.equal('attachmentCount' in result.value, false);
 });
