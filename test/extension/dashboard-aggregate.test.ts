@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { aggregateByCalendar, aggregateByLabel, groupWarnings } from '../../src/extension/dashboard-aggregate.js';
+import { aggregateByCalendar, aggregateByLabel, groupWarnings, aggregateContentSignals } from '../../src/extension/dashboard-aggregate.js';
 import type { NormalizedCalendarEvent } from '../../src/core/normalize.js';
 
 function ev(over: Partial<NormalizedCalendarEvent>): NormalizedCalendarEvent {
@@ -44,4 +44,18 @@ test('groupWarnings: 경고 code별 영향 이벤트 묶음', () => {
 
 test('groupWarnings: 경고 없으면 빈 배열', () => {
   assert.deepEqual(groupWarnings([ev({}), ev({})]), []);
+});
+
+test('aggregateContentSignals: 참가자/첨부 있는 일정 건수 (#83)', () => {
+  const out = aggregateContentSignals([
+    ev({ participantCount: 3 }),
+    ev({ participantCount: 1, attachmentCount: 2 }),
+    ev({ attachmentCount: 1 }),
+    ev({}),
+  ]);
+  assert.deepEqual(out, { participants: 2, attachments: 2 });
+});
+
+test('aggregateContentSignals: 없으면 0/0', () => {
+  assert.deepEqual(aggregateContentSignals([ev({}), ev({})]), { participants: 0, attachments: 0 });
 });

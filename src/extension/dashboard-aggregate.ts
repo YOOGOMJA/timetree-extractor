@@ -4,6 +4,18 @@ import type { NormalizedCalendarEvent } from '../core/normalize.js';
 export type CalendarCount = { name: string; count: number };
 export type LabelCount = { name: string; count: number };
 export type WarningGroup = { code: string; events: { title: string; calendarName: string }[] };
+export type ContentSignals = { participants: number; attachments: number };
+
+// 참가자/첨부 *있는 일정 건수* (#83). 내용이 아니라 개수 신호만 집계.
+export function aggregateContentSignals(events: NormalizedCalendarEvent[]): ContentSignals {
+  let participants = 0;
+  let attachments = 0;
+  for (const e of events) {
+    if (e.participantCount && e.participantCount > 0) participants += 1;
+    if (e.attachmentCount && e.attachmentCount > 0) attachments += 1;
+  }
+  return { participants, attachments };
+}
 
 function tallyDesc(pairs: Iterable<string>): { name: string; count: number }[] {
   const counts = new Map<string, number>();

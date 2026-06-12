@@ -18,7 +18,8 @@ import {
 import { CalendarList } from './components/CalendarList.js';
 import { describeWarning } from './warning-copy.js';
 import { computeVirtualWindow } from './virtual-window.js';
-import { aggregateByCalendar, aggregateByLabel, groupWarnings } from './dashboard-aggregate.js';
+import { aggregateByCalendar, aggregateByLabel, groupWarnings, aggregateContentSignals } from './dashboard-aggregate.js';
+import { formatEventMeta } from './event-meta.js';
 import { labelChipColors } from './label-color.js';
 import type { ExportHistoryRecord } from './export-history.js';
 import { loadHistory, recordExport, clearHistory } from './export-history-store.js';
@@ -152,6 +153,15 @@ const expandedIssues = new Set<string>();
 function renderDashboardSections(events: NormalizedCalendarEvent[]): void {
   dashboardEvents = events;
 
+  // 참가자/첨부 *있는 일정 건수* 신호 (#83). 내용은 안 싣고 개수만.
+  const signals = aggregateContentSignals(events);
+  const signalEl = document.getElementById('content-signals')!;
+  const signalParts: string[] = [];
+  if (signals.participants > 0) signalParts.push(`참가자 있는 일정 ${signals.participants}건`);
+  if (signals.attachments > 0) signalParts.push(`첨부 있는 일정 ${signals.attachments}건`);
+  signalEl.textContent = signalParts.length > 0 ? `${signalParts.join(' · ')} (내용 제외, 개수만)` : '';
+  signalEl.toggleAttribute('hidden', signalParts.length === 0);
+
   const calendars = aggregateByCalendar(events);
   const calSection = document.getElementById('cal-section')!;
   const calList = document.getElementById('cal-list')!;
@@ -252,7 +262,7 @@ function renderDetailWindow(): void {
       {slice.map((event, i) => (
         <div class="event-item" style={`height:${DETAIL_ROW_HEIGHT}px`} key={win.start + i}>
           <div class="title">{event.title}</div>
-          <div class="date">{formatEventDate(event)} · {event.calendarName}</div>
+          <div class="date">{formatEventDate(event)} · {event.calendarName}{formatEventMeta(event) ? ` · ${formatEventMeta(event)}` : ''}</div>
         </div>
       ))}
     </div>,
