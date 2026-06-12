@@ -303,6 +303,21 @@ test('mirrors labels and URL into DESCRIPTION while keeping CATEGORIES and URL l
   assert.match(ics, /URL:https:\/\/example.test\/event\r\n/);
 });
 
+test('참가자·첨부 수를 DESCRIPTION 메모로 미러링한다 (#81)', () => {
+  const event = normalized({
+    ...timedEventFixture,
+    id: 'event-counts-mirror-1',
+    note: '기본 설명',
+    participantCount: 3,
+    attachmentCount: 2,
+  });
+
+  const ics = createIcsCalendar([event], { now: new Date(Date.UTC(2026, 0, 1, 0, 0, 0)) });
+  const unfolded = ics.replaceAll('\r\n ', '');
+  assert.match(unfolded, /참가자 3명/);
+  assert.match(unfolded, /첨부 파일 2개\(미포함\)/);
+});
+
 test('composes DESCRIPTION from labels and URL even when there is no base description', () => {
   const event = normalized({
     ...timedEventFixture,

@@ -9,6 +9,10 @@ export function mapSqliteEventRowToRawTimeTreeEvent(row: SqliteEventRow): RawTim
   if (hasPrivateCollectionContent(row.attendees)) warnings.push('shared-calendar-personal-data');
   if (hasAttachmentContent(row.attachment) || hasPrivateCollectionContent(row.files)) warnings.push('unsupported-attachment');
 
+  // 내용은 싣지 않고 개수만 보존(#81). cache의 opaque blob은 셀 수 없어 absent.
+  const participantCount = collectionCount(row.attendees);
+  const attachmentCount = collectionCount(row.files);
+
   return {
     id: stringValue(row.id),
     calendarId: numberValue(row.calendar_id),
@@ -27,9 +31,8 @@ export function mapSqliteEventRowToRawTimeTreeEvent(row: SqliteEventRow): RawTim
     recurStartAt: optionalNullableNumber(row.recur_start_at),
     recurEndAt: optionalNullableNumber(row.recur_end_at),
     alerts: [],
-    attendees: [],
-    attachment: null,
-    files: [],
+    participantCount,
+    attachmentCount,
     updatedAt: optionalNumber(row.updated_at),
     createdAt: optionalNumber(row.created_at),
     deactivatedAt: optionalNullableNumber(row.deactivated_at),
@@ -47,6 +50,17 @@ function readRecurrences(value: unknown, warnings: ExtractionWarning[]): string[
   }
   if (value instanceof Uint8Array && value.byteLength > 0) warnings.push('recurrence-not-normalized');
   return [];
+}
+
+// 셀 수 있으면 개수, opaque blob(Uint8Array)처럼 셀 수 없으면 undefined.
+// 내용은 절대 보존하지 않는다 — 길이만 읽는다(#81).
+function collectionCount(value: unknown): number | undefined {
+  if (Array.isArray(value)) return value.length;
+  if (typeof value === 'string') {
+    const parsed = parseJson(value);
+    return Array.isArray(parsed) ? parsed.length : undefined;
+  }
+  return undefined;
 }
 
 function hasPrivateCollectionContent(value: unknown): boolean {

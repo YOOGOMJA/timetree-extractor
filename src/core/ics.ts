@@ -180,6 +180,11 @@ function composeDescription(event: NormalizedCalendarEvent): string {
   const extra: string[] = [];
   if (event.labels && event.labels.length > 0) extra.push(`라벨: ${event.labels.join(', ')}`);
   if (event.url) extra.push(`링크: ${event.url}`);
+  // 참가자/첨부는 본문에 싣지 않고(개인정보·바이너리 제외) 수만 메모로 남긴다(#81).
+  if (event.participantCount && event.participantCount > 0) extra.push(`참가자 ${event.participantCount}명`);
+  if (event.attachmentCount && event.attachmentCount > 0) {
+    extra.push(`첨부 파일 ${event.attachmentCount}개(미포함)`);
+  }
 
   if (extra.length === 0) return base;
   if (base === '') return extra.join('\n');

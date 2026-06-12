@@ -47,6 +47,10 @@ export type NormalizedCalendarEvent = {
   /** export 시 RECURRENCE-ID로 emit되는 원래 occurrence (linkRecurringOverrides가 설정). */
   recurrenceId?: NormalizedDateTime;
   labels?: string[];
+  /** 참가자 수만 보존(이름·ID는 싣지 않음, data-minimization). 추출 시점 산출(#81). absent=0. */
+  participantCount?: number;
+  /** 첨부 파일 수만 보존(바이너리는 v1 범위 밖). 추출 시점 산출(#81). absent=0. */
+  attachmentCount?: number;
   reminders?: NormalizedReminder[];
   source: {
     provider: 'timetree';
@@ -117,6 +121,9 @@ export function normalizeRawTimeTreeEvent(rawEvent: unknown, context: Normalizat
   if (event.location) value.location = event.location;
   if (urlResult.value) value.url = urlResult.value;
   if (labels.length > 0) value.labels = labels;
+  // 개수는 추출 시점에 산출돼 raw에 실려 온다(내용은 boundary를 넘지 않음, #81).
+  if (event.participantCount && event.participantCount > 0) value.participantCount = event.participantCount;
+  if (event.attachmentCount && event.attachmentCount > 0) value.attachmentCount = event.attachmentCount;
   if (recurrence) value.recurrence = recurrence;
   if (alertResult.reminders.length > 0) value.reminders = alertResult.reminders;
   if (event.recurringUuid != null) value.recurrenceGroupId = event.recurringUuid;
@@ -275,13 +282,10 @@ function collectWarnings(event: RawTimeTreeEvent): NormalizationWarning[] {
       if (tz && !isValidIanaTimezone(tz)) warnings.push('timezone-not-iana');
     }
   }
-  if (Array.isArray(event.attendees) && event.attendees.length > 0) {
+  if (event.participantCount && event.participantCount > 0) {
     warnings.push('participant-omitted');
   }
-  if (event.attachment) {
-    warnings.push('attachment-omitted');
-  }
-  if (Array.isArray(event.files) && event.files.length > 0) {
+  if (event.attachmentCount && event.attachmentCount > 0) {
     warnings.push('attachment-omitted');
   }
   return unique(warnings);

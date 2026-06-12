@@ -43,9 +43,8 @@ test('maps SQLite events row into the stable raw TimeTree event contract', () =>
     recurrences: [],
     recurringUuid: null,
     alerts: [],
-    attendees: [],
-    attachment: null,
-    files: [],
+    participantCount: undefined,
+    attachmentCount: undefined,
     updatedAt: 1_767_000_000_001,
     createdAt: 1_767_000_000_002,
     deactivatedAt: null,
@@ -74,10 +73,10 @@ test('marks binary recurrence and privacy-sensitive SQLite JSONB fields without 
   });
 
   assert.deepEqual(raw.recurrences, []);
-  assert.deepEqual(raw.attendees, []);
   assert.deepEqual(raw.alerts, []);
-  assert.equal(raw.attachment, null);
-  assert.deepEqual(raw.files, []);
+  // opaque blob은 셀 수 없으므로 count는 absent(내용도 미보존).
+  assert.equal(raw.participantCount, undefined);
+  assert.equal(raw.attachmentCount, undefined);
   assert.deepEqual(raw.extractionWarnings, [
     'internal-api-surface',
     'recurrence-not-normalized',
@@ -122,8 +121,8 @@ test('warns on decoded privacy JSON without carrying private arrays forward', ()
     files: '[]',
   });
 
-  assert.deepEqual(raw.attendees, []);
-  assert.equal(raw.attachment, null);
-  assert.deepEqual(raw.files, []);
+  // JSON 배열은 길이만 읽어 count로 보존(내용은 미보존).
+  assert.equal(raw.participantCount, 2);
+  assert.equal(raw.attachmentCount, 0);
   assert.deepEqual(raw.extractionWarnings, ['internal-api-surface', 'shared-calendar-personal-data']);
 });

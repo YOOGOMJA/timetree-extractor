@@ -1,6 +1,6 @@
 # V1 export policy
 
-결론: v1 export는 **일정의 핵심 시간 정보와 반복 규칙까지 포함**하되, participant, attachment, file, activity/comment는 export하지 않고 warning으로 남긴다.
+결론: v1 export는 **일정의 핵심 시간 정보와 반복 규칙까지 포함**하되, participant, attachment, file, activity/comment의 *내용*은 export하지 않는다. 단, **참가자/첨부는 "있었다"는 신호를 잃지 않도록 개수만 메모로 보존**한다(#81): 참가자 인원수(`participantCount`)와 첨부 파일 수(`attachmentCount`)를 normalized event에 담고 ICS `DESCRIPTION`에 "참가자 N명", "첨부 파일 N개(미포함)" 한 줄로 미러링한다. 이름·ID·바이너리는 여전히 싣지 않는다.
 
 ## 기준
 
@@ -35,9 +35,9 @@
 
 | Field | v1 처리 | Warning |
 | --- | --- | --- |
-| `attendees` | export하지 않음 | `shared-calendar-personal-data` / `participant-omitted` |
-| `attachment` | export하지 않음 | `unsupported-attachment` / `attachment-omitted` |
-| `files` | export하지 않음 | `unsupported-attachment` / `attachment-omitted` |
+| `attendees` | 내용 제외, **인원수만** `participantCount`로 보존 후 `DESCRIPTION`에 "참가자 N명" 미러링 | `shared-calendar-personal-data` / `participant-omitted` |
+| `attachment` | export하지 않음 (이미지/cover 등 metadata는 개수 집계에서 제외) | `unsupported-attachment` / `attachment-omitted` |
+| `files` | 내용 제외, **파일 수만** `attachmentCount`로 보존 후 `DESCRIPTION`에 "첨부 파일 N개(미포함)" 미러링 | `unsupported-attachment` / `attachment-omitted` |
 | activities/comments | 읽지 않음 (정책 차원 제외, normalize warning 없음) | `unsupported-comment` (EXTRACTION; 현재 emit 경로 없음) |
 
 ## Recurrence policy
