@@ -105,6 +105,12 @@ DESCRIPTION / VALARM(secondary) / STATUS / CLASS / TRANSP / 비IANA TZID는 2026
 
 - `RECURRENCE-ID` 동작 — #14(PR #58)/#62(PR #65)에서 **emit 구현됨**(실모델로 재설계). 실데이터 모델은 Claude in Chrome로 관찰: override의 `recurring_uuid`가 master `id`를 가리키고 master는 EXDATE를 가짐.
 - `RRULE UNTIL` 형식 — **TimeTree 웹은 반복 종료일(UNTIL) UI가 없다**(Repeat은 무한 프리셋만; 2026-06-11 Claude in Chrome 관찰). 따라서 웹 생성 이벤트엔 UNTIL이 없고, UNTIL은 모바일 동기화 이벤트에 한정된다(형식 미관찰). #63(PR #66)에서 방어적 정규화(all-day→DATE, UTC→Z) 구현. non-UTC zoned floating UNTIL은 실 샘플 확보 시 추가 검증.
+- **반복/시간대 실 Google import — 검증됨(2026-06-12, GCal API 스모크).** 우리 익스포터 파이프라인 출력을 실제 `dev.ks.yoo@gmail.com` Google Calendar에 넣어 확인(생성 후 즉시 삭제):
+  - `RRULE:FREQ=WEEKLY`(BYDAY 없음) → **주간 시리즈로 수용·전개** (#61 핵심 — Google이 bare WEEKLY 정상 처리).
+  - `RRULE:FREQ=YEARLY` → **연간 시리즈로 수용** (#61).
+  - `EXDATE;VALUE=DATE:20260708` → 해당 회차(7/8)가 **시리즈에서 제외됨**(7/1·7/15·7/22·7/29만 전개) — Google이 EXDATE honor.
+  - all-day(DATE)·UTC `...Z`(09:00Z→18:00 KST) → **정확 변환**.
+  - 잔여: ICS 파일 import 경로 자체 + `RECURRENCE-ID` override의 series-수정 반영(#62)은 API로 재현 불가 → 사용자가 가져오기 가이드로 수동 확인 권장. (override의 master EXDATE 제거는 #62 단위/probe로 커버됨.)
 - line folding strictness와 ~1MB/event-count 한계의 실제 임계 (의도적 대용량/오folding fixture 필요)
 
 ## Sources
