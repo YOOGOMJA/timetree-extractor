@@ -143,8 +143,14 @@
       </div>
       <div class="section">
         <h2>기간</h2>
-        <label>시작일<input type="date" id="date-from" name="date-from" autocomplete="off"></label>
-        <label style="margin-top:8px">종료일<input type="date" id="date-to" name="date-to" autocomplete="off"></label>
+        <label style="display:flex;align-items:center;gap:6px">
+          <input type="checkbox" id="range-all" name="range-all" checked>
+          전체 기간 (모든 일정)
+        </label>
+        <div id="range-fields" style="margin-top:8px">
+          <label>시작일<input type="date" id="date-from" name="date-from" autocomplete="off" disabled></label>
+          <label style="margin-top:8px">종료일<input type="date" id="date-to" name="date-to" autocomplete="off" disabled></label>
+        </div>
       </div>
       <button id="btn-analyze" class="btn-primary">분석</button>
     </div>
