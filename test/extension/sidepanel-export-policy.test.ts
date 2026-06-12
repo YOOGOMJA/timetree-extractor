@@ -5,6 +5,7 @@ import {
   filterEventsByRange,
   aggregateWarnings,
   decideExport,
+  resolveRangeMode,
 } from '../../src/extension/sidepanel-export-policy.js';
 import type { NormalizedCalendarEvent } from '../../src/core/normalize.js';
 
@@ -169,4 +170,20 @@ test('decideExport: filename에 now의 날짜가 포함된다', () => {
   assert.equal(result.allowed, true);
   if (!result.allowed) return;
   assert.equal(result.filename, 'timetree-export-2027-12-31.ics');
+});
+
+test('전체 모드면 kind=all (날짜 무시) (#84)', () => {
+  assert.deepEqual(resolveRangeMode(true, '', ''), { kind: 'all' });
+  assert.deepEqual(resolveRangeMode(true, '2026-01-01', '2026-12-31'), { kind: 'all' });
+});
+
+test('좁힘 모드 + 유효 날짜면 kind=range (#84)', () => {
+  const out = resolveRangeMode(false, '2026-01-01', '2026-01-31');
+  assert.equal(out.kind, 'range');
+  assert.equal(out.kind === 'range' && typeof out.range.fromMs, 'number');
+});
+
+test('좁힘 모드 + 무효/공란 날짜면 kind=invalid (#84)', () => {
+  assert.deepEqual(resolveRangeMode(false, '', ''), { kind: 'invalid' });
+  assert.deepEqual(resolveRangeMode(false, '2026-12-31', '2026-01-01'), { kind: 'invalid' });
 });
