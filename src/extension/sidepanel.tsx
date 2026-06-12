@@ -131,7 +131,9 @@ function renderResults(
   // 제외가 있으면 "왜·괜찮은지" 안심 카피(#78 P0-3). 마이그레이터의 불안을 행동가능 정보로.
   const fidNote = document.getElementById('fid-note')!;
   if (dropped > 0) {
-    fidNote.textContent = '제외된 일정은 Google·Apple 캘린더가 안전하게 읽지 못하는 형식(예: 비표준 반복)이라 빠졌습니다. 보통 안전하며, 자세한 내용은 아래 “발견된 이슈”에서 볼 수 있습니다.';
+    // dropped = 선택 기간 밖 + Google·Apple이 못 읽는 형식(비표준 반복 등) 양쪽을 합친 수.
+    // 두 사유를 모두 정직하게 안내한다(codex 리뷰).
+    fidNote.textContent = '제외에는 선택한 기간 밖 일정과, Google·Apple 캘린더가 안전하게 읽지 못하는 형식(예: 비표준 반복)이 포함됩니다. 후자는 아래 “발견된 이슈”에서 볼 수 있습니다.';
     fidNote.removeAttribute('hidden');
   } else {
     fidNote.setAttribute('hidden', '');
@@ -491,12 +493,15 @@ async function exportEvents(): Promise<void> {
     return;
   }
 
+  // format을 export 시작 시점에 snapshot한다 — 이후 await(동의 모달·기록) 동안 사용자가
+  // radio를 바꿔도 저장 파일·기록·가이드 분기가 일관되도록(codex 리뷰).
+  const format = getSelectedFormat();
   const consent = await openWarningModal();
 
   const decision = decideExport({
     consent,
     events: lastNormalized,
-    format: getSelectedFormat(),
+    format,
     now: new Date(),
   });
 
@@ -518,7 +523,7 @@ async function exportEvents(): Promise<void> {
     calendarCount,
     fromDate: (document.getElementById('date-from') as HTMLInputElement | null)?.value ?? '',
     toDate: (document.getElementById('date-to') as HTMLInputElement | null)?.value ?? '',
-    format: getSelectedFormat(),
+    format,
     exportCount: lastNormalized.length,
     warningCount: warningTotal,
     filename: decision.filename,
@@ -526,7 +531,7 @@ async function exportEvents(): Promise<void> {
 
   // 마이그레이션 마지막 1마일(#78): ICS는 캘린더 앱에 가져와야 잡이 끝난다 → 가져오기 가이드.
   // JSON은 캘린더 import 대상이 아니므로 대시보드에 머문다.
-  if (getSelectedFormat() === 'ics') {
+  if (format === 'ics') {
     document.getElementById('guide-file')!.textContent = decision.filename;
     showState('guide');
   }
