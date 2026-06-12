@@ -13,6 +13,20 @@ export function parseDateRange(
   return { fromMs, toMs };
 }
 
+export type RangeMode =
+  | { kind: 'all' }
+  | { kind: 'range'; range: { fromMs: number; toMs: number } }
+  | { kind: 'invalid' };
+
+// setup의 "전체 기간" 체크 상태 + 날짜 입력값으로 수집 범위를 결정한다(#84).
+// 전체(fullMode)면 필터를 적용하지 않는다(kind:'all'). 좁힘 모드에서 날짜가
+// 유효하면 range, 아니면 invalid. 순수 함수 — DOM 접근은 호출 측 책임.
+export function resolveRangeMode(fullMode: boolean, fromStr: string, toStr: string): RangeMode {
+  if (fullMode) return { kind: 'all' };
+  const range = parseDateRange(fromStr, toStr);
+  return range ? { kind: 'range', range } : { kind: 'invalid' };
+}
+
 function getEventStartMs(event: NormalizedCalendarEvent): number {
   return event.start.kind === 'date-time'
     ? event.start.epochMs
