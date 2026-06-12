@@ -1,5 +1,7 @@
 # Decision 0002: 제한된 contract-first 구현은 진행한다
 
+> **갱신(0006)**: 이 문서의 "public extension/store distribution = no-go" 및 "Browser extension UI = no-go"는 [0006](0006-public-distribution-track.md)에서 supersede됐다 — 공개 Chrome Web Store 배포를 목표로 전환(게이팅 통과 전제). 서버 전송·credential 저장·SaaS no-go는 0006에서도 유효.
+
 결론: **구현은 진행한다. 단, 범위는 local-only contract validator, parser/normalizer prototype, 그리고 Chrome extension을 고려한 page extraction boundary로 제한한다.** Browser extension UI, public distribution, SaaS, background sync, credential/session 저장, attachment export는 no-go다.
 
 ## Decision status
