@@ -9,16 +9,17 @@ import type {
   FetchEventsResponse,
   FetchLabelsResponse,
 } from './message-protocol.js';
-import { escapeHtml, toIsoDate, errorMessage, isTimetreeUrl } from './sidepanel-utils.js';
+import { toIsoDate, errorMessage, isTimetreeUrl } from './sidepanel-utils.js';
 import {
   parseDateRange,
   filterEventsByRange,
-  aggregateWarnings,
   decideExport,
 } from './sidepanel-export-policy.js';
 import { CalendarList } from './components/CalendarList.js';
 import { describeWarning } from './warning-copy.js';
 import { computeVirtualWindow } from './virtual-window.js';
+import { aggregateByCalendar, aggregateByLabel, groupWarnings } from './dashboard-aggregate.js';
+import { labelChipColors } from './label-color.js';
 import type { ExportHistoryRecord } from './export-history.js';
 import { loadHistory, recordExport, clearHistory } from './export-history-store.js';
 
@@ -127,27 +128,94 @@ function renderResults(
   const ratio = totalFetched > 0 ? Math.round((exportCount / totalFetched) * 100) : 100;
   (document.getElementById('fid-bar') as HTMLElement).style.width = `${ratio}%`;
 
-  // 경고: enum 코드를 사람 말로(label + hint + 건수).
-  const warningCounts = aggregateWarnings(events);
-  const warningsSection = document.getElementById('warnings-section')!;
-  const warningsList = document.getElementById('warnings-list')!;
-  const warningEntries = Object.entries(warningCounts);
-  if (warningEntries.length > 0) {
-    warningsList.innerHTML = warningEntries
-      .map(([code, n]) => {
-        const { label, hint } = describeWarning(code);
-        const hintHtml = hint ? `<div class="w-hint">${escapeHtml(hint)}</div>` : '';
-        return `<div class="warning-item"><div class="w-label"><span>${escapeHtml(label)}</span><span class="count">${n}건</span></div>${hintHtml}</div>`;
-      })
-      .join('');
-    warningsSection.removeAttribute('hidden');
-  } else {
-    warningsSection.setAttribute('hidden', '');
-  }
-
-  document.getElementById('detail-count')!.textContent = String(exportCount);
+  renderDashboardSections(events);
+  document.getElementById('detail-count')!.textContent = `${exportCount}건`;
 
   showState('results');
+}
+
+// 대시보드 섹션: 캘린더별 집계 · 라벨 카테고리 칩 · 이슈 드릴다운(#75).
+let dashboardEvents: NormalizedCalendarEvent[] = [];
+const expandedIssues = new Set<string>();
+
+function renderDashboardSections(events: NormalizedCalendarEvent[]): void {
+  dashboardEvents = events;
+
+  const calendars = aggregateByCalendar(events);
+  const calSection = document.getElementById('cal-section')!;
+  const calList = document.getElementById('cal-list')!;
+  calSection.toggleAttribute('hidden', calendars.length === 0);
+  render(
+    <div>
+      {calendars.map((c) => (
+        <div class="cal-row" key={c.name}>
+          <span class="cal-name">{c.name}</span>
+          <span class="cal-count">{c.count}건</span>
+        </div>
+      ))}
+    </div>,
+    calList,
+  );
+
+  const labels = aggregateByLabel(events);
+  const labelSection = document.getElementById('label-section')!;
+  const labelChips = document.getElementById('label-chips')!;
+  labelSection.toggleAttribute('hidden', labels.length === 0);
+  render(
+    <div class="chips">
+      {labels.map((l) => {
+        const { bg, fg } = labelChipColors(l.name);
+        return (
+          <span class="chip" key={l.name} style={`background:${bg};color:${fg}`}>
+            {l.name} <span class="chip-count">{l.count}</span>
+          </span>
+        );
+      })}
+    </div>,
+    labelChips,
+  );
+
+  renderIssues();
+}
+
+function renderIssues(): void {
+  const groups = groupWarnings(dashboardEvents);
+  const section = document.getElementById('warnings-section')!;
+  const list = document.getElementById('warnings-list')!;
+  section.toggleAttribute('hidden', groups.length === 0);
+  render(
+    <div>
+      {groups.map((g) => {
+        const { label, hint } = describeWarning(g.code);
+        const open = expandedIssues.has(g.code);
+        return (
+          <div class="issue-row" key={g.code}>
+            <button class="issue-toggle" aria-expanded={open} onClick={() => toggleIssue(g.code)}>
+              <span class="i-label">{label}</span>
+              <span class="i-right"><span class="i-count">{g.events.length}건</span><span>{open ? '▾' : '▸'}</span></span>
+            </button>
+            {open && (
+              <div>
+                {hint && <div class="issue-hint">{hint}</div>}
+                <div class="issue-events">
+                  {g.events.map((e, i) => (
+                    <div class="ie" key={i}>{e.title || '(제목 없음)'} · {e.calendarName}</div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        );
+      })}
+    </div>,
+    list,
+  );
+}
+
+function toggleIssue(code: string): void {
+  if (expandedIssues.has(code)) expandedIssues.delete(code);
+  else expandedIssues.add(code);
+  renderIssues();
 }
 
 // --- 상세 목록 (검색 + 가상화) ---
@@ -184,6 +252,12 @@ function renderDetailWindow(): void {
 function openDetail(): void {
   const query = (document.getElementById('event-search') as HTMLInputElement | null)?.value ?? '';
   detailFiltered = lastNormalized.filter((e) => matchesSearch(e, query));
+  const head = document.getElementById('detail-count-head');
+  if (head) {
+    head.textContent = query
+      ? `${detailFiltered.length}건 / 전체 ${lastNormalized.length}건`
+      : `전체 ${lastNormalized.length}건`;
+  }
   showState('detail');
   // detail-scroll은 showState로 막 보이게 됐으므로 clientHeight가 이제 유효하다.
   const scroll = document.getElementById('detail-scroll');
