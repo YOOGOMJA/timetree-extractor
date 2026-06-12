@@ -11,9 +11,9 @@ import type {
 } from './message-protocol.js';
 import { toIsoDate, errorMessage, isTimetreeUrl } from './sidepanel-utils.js';
 import {
-  parseDateRange,
   filterEventsByRange,
   decideExport,
+  resolveRangeMode,
 } from './sidepanel-export-policy.js';
 import { CalendarList } from './components/CalendarList.js';
 import { describeWarning } from './warning-copy.js';
@@ -57,12 +57,6 @@ function showError(message: string): void {
   const el = document.getElementById('error-message');
   if (el) el.textContent = message;
   showState('error');
-}
-
-function getDateRangeMs(): { fromMs: number; toMs: number } | null {
-  const fromVal = (document.getElementById('date-from') as HTMLInputElement).value;
-  const toVal = (document.getElementById('date-to') as HTMLInputElement).value;
-  return parseDateRange(fromVal, toVal);
 }
 
 function formatEventDate(event: NormalizedCalendarEvent): string {
@@ -384,8 +378,11 @@ async function analyzeEvents(): Promise<void> {
     showError('캘린더를 하나 이상 선택하세요');
     return;
   }
-  const range = getDateRangeMs();
-  if (!range) {
+  const fullMode = (document.getElementById('range-all') as HTMLInputElement | null)?.checked ?? true;
+  const fromVal = (document.getElementById('date-from') as HTMLInputElement | null)?.value ?? '';
+  const toVal = (document.getElementById('date-to') as HTMLInputElement | null)?.value ?? '';
+  const rangeMode = resolveRangeMode(fullMode, fromVal, toVal);
+  if (rangeMode.kind === 'invalid') {
     showError('유효한 기간을 입력하세요');
     return;
   }
@@ -442,7 +439,10 @@ async function analyzeEvents(): Promise<void> {
     normalizedAll.push(result.value);
   }
 
-  const normalized = linkRecurringOverrides(filterEventsByRange(normalizedAll, range));
+  const ranged = rangeMode.kind === 'range'
+    ? filterEventsByRange(normalizedAll, rangeMode.range)
+    : normalizedAll;
+  const normalized = linkRecurringOverrides(ranged);
   normalized.sort((a, b) => {
     const aMs = a.start.kind === 'date-time' ? a.start.epochMs : new Date(`${a.start.date}T00:00:00`).getTime();
     const bMs = b.start.kind === 'date-time' ? b.start.epochMs : new Date(`${b.start.date}T00:00:00`).getTime();
