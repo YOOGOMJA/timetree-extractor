@@ -1,6 +1,6 @@
 # RECURRENCE-ID override import 수동 검증 runbook (#85)
 
-> 상태: 준비 완료, **실 import 결과 미기록**(human/browser 필요). 2026-06-12.
+> 상태: **검증 완료**(Google Calendar, 2026-06-12). Google이 RECURRENCE-ID override + EXDATE-소비 모델을 정상 처리함을 확인. 아래 "결과" 참고.
 > 목적: GCal API로 재현 불가한 두 경로를 사람이 파일 import로 확인한다.
 > (a) `.ics` 파일 import 경로 자체, (b) RECURRENCE-ID로 수정된 반복 instance가 import 후 정합한지.
 
@@ -38,15 +38,19 @@ END:VEVENT
 3. 2026-06 월요일들을 확인.
 4. 검증 후 **가져온 일정 전부 삭제**(아래 정리).
 
-## 기대값 vs 실제 (실제는 import 후 기록)
+## 결과 (Google Calendar, 2026-06-12, 개인 캘린더 "KyeongSoo Yoo")
 
 | 항목 | 기대 | 실제 |
 | --- | --- | --- |
-| 매주 월 "주간 회의" 생성 | 06-01, 06-08, 06-22, 06-29 … 반복 | TBD |
-| 06-15 occurrence | 시리즈의 그 자리만 "주간 회의 — 안건 추가"로 대체 | TBD |
-| 06-15에 원본 + 수정본 **중복** 여부 | 중복 없음(RECURRENCE-ID가 그 occurrence를 덮음) | TBD |
-| 시간대 | 전부 10:00 KST | TBD |
-| 파일 import 자체 성공 | 오류 없이 가져옴 | TBD |
+| 파일 import 자체 | 오류 없이 가져옴 | ✅ "일정 2개 중 2개를 가져왔습니다" |
+| 매주 월 "주간 회의" 반복 | 06-08, 06-22 … 반복 | ✅ 06-22 "주간 회의" 10–11시 확인 |
+| 06-15 occurrence | 그 자리만 "주간 회의 — 안건 추가"로 대체 | ✅ 06-15만 override 제목 |
+| 06-15 원본+수정본 **중복** | 중복 없음(RECURRENCE-ID가 occurrence를 덮음) | ✅ 06-15 일정 **1개**, 중복 없음 |
+| 시간대 | 전부 10:00 KST | ✅ 전부 오전 10–11시 |
+
+**결론**: Google file import는 (1) `.ics` 파일 import을 정상 수행하고, (2) master `UID` + `RRULE` + 같은 `UID`의 `RECURRENCE-ID` override를 올바르게 묶어 해당 occurrence만 대체한다(중복 생성 없음). 우리의 EXDATE-소비 링크 모델([[timetree-recurring-instance-model]])이 Google에서 의도대로 동작. **정리**: 검증 후 series(모든 일정) 삭제 완료, 06-15 주 "일정 없음" 확인.
+
+> Apple Calendar는 미검증(동일 파일로 추후). 절차는 아래 유지.
 
 ## Apple Calendar
 
