@@ -1,5 +1,7 @@
 # Privacy and Local-only Boundary
 
+> **갱신(0006)**: 이 문서의 "browser extension store 공개 금지"는 [decisions/0006](../decisions/0006-public-distribution-track.md)에서 supersede됐다 — 공개 스토어 배포를 목표로 전환(게이팅 통과 전제). 단, **server 전송·credential/token 저장·SaaS·background sync 금지와 data minimization 원칙은 그대로 유효**하며, 공개 처리방침 초안은 `docs/legal/privacy-policy.md`에 있다(#95).
+
 결론: 구현은 **local-only personal export research prototype**으로만 허용한다. TimeTree Web 내부 data surface를 사용할 수는 있지만, 공식 공개 API가 아니므로 credential/session/token 저장, server 전송, public SaaS, 지속 polling은 v1 범위에서 금지한다.
 
 ## Decision
