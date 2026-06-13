@@ -52,6 +52,16 @@ END:VEVENT
 
 > Apple Calendar는 미검증(동일 파일로 추후). 절차는 아래 유지.
 
+## 제출 직전 회귀 점검 (#96, 2026-06-13)
+
+배포 제출 직전 정확성 게이트. **캘린더를 다시 건드리지 않고** 회귀 부재를 입증:
+
+1. 전체 테스트 281 pass, 반복/시간대/RECURRENCE-ID 타깃 88 pass.
+2. export 코어(`src/core/ics.ts`·`recurrence-link.ts`·`normalize.ts`)가 #85 검증(PR #88) 이후 **무변경** → #85의 실 Google import 결과가 그대로 유효.
+3. 동일 파이프라인으로 재생성한 master+override ICS가 커밋된 `artifacts/recurrence-id-override-sample.ics`와 **byte-identical**(DTSTAMP 제외) — RECURRENCE-ID/RRULE/EXDATE 구조 회귀 0.
+
+결론: 제출 직전 정확성 회귀 없음. 실 import 재검증은 export 산출물이 #85와 동일함이 증명되어 불필요.
+
 ## Apple Calendar
 
 동일 파일을 macOS Calendar.app에 import(파일 → 가져오기) → 개인 캘린더 대상 → 같은 표를 채운다.
