@@ -2,6 +2,8 @@
 
 결론: **이 프로젝트는 공개 Chrome Web Store 배포를 목표로 한다.** 0002의 "public extension/store distribution = no-go"를 이 항목에 한해 **supersede**한다. 단, 배포는 무조건이 아니라 아래 **게이팅 체크리스트를 모두 통과한 뒤**에만 제출한다. 로컬 전용·데이터 최소화·no-silent-loss 같은 핵심 제약은 배포 후에도 유지한다.
 
+> **게이팅 진행(2026-06-13)**: 1(#92 ✅ API 변경 감지)·3(#94 ✅ 스토어 준비)·4(#95 ✅ privacy policy). 법무(#93)는 소유자가 **리스크를 수용**해 진행 결정(법적 clearance 아님 — `docs/legal/timetree-aup-risk-review.md`). 분쟁 시 옵션 B(비공개 한정)/C(보류)로 후퇴. 남은 것: #96(제출 직전 정확성 회귀)·스크린샷·privacy 공개 URL.
+
 ## Decision status
 
 | 항목 | 0002 판단 | 0006 갱신 |
