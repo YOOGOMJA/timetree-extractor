@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- TimeTree Exporter 아이콘 디자인 소스. 16/32/48/128 PNG로 export해 사용(#94).
+     TimeTree 상표를 쓰지 않는 독자 글리프: 캘린더 + 내보내기(아래 화살표). -->
+<svg width="128" height="128" viewBox="0 0 128 128" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="128" height="128" rx="28" fill="#2F6F4E"/>
+  <!-- 캘린더 본체 -->
+  <rect x="28" y="32" width="72" height="60" rx="8" fill="#FFFFFF"/>
+  <!-- 상단 바인딩 -->
+  <rect x="28" y="32" width="72" height="16" rx="8" fill="#1F4E37"/>
+  <rect x="44" y="24" width="6" height="16" rx="3" fill="#1F4E37"/>
+  <rect x="78" y="24" width="6" height="16" rx="3" fill="#1F4E37"/>
+  <!-- 날짜 점 그리드 -->
+  <g fill="#9CC4AE">
+    <circle cx="44" cy="60" r="4"/><circle cx="64" cy="60" r="4"/><circle cx="84" cy="60" r="4"/>
+    <circle cx="44" cy="76" r="4"/>
+  </g>
+  <!-- 내보내기 화살표 -->
+  <g stroke="#2F6F4E" stroke-width="7" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <path d="M70 70 V96"/>
+    <path d="M58 84 L70 97 L82 84"/>
+  </g>
+</svg>
