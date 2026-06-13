@@ -11,6 +11,10 @@ import type {
 
 export const TIMETREE_OBSERVER_MESSAGE_TYPE = 'TIMETREE_EXPORTER_OBSERVED_PAYLOAD';
 
+// TimeTree 내부 API 클라이언트 식별 헤더. 비공식 contract라 버전이 바뀌면
+// 응답이 달라질 수 있다 — 한 곳에서 관리하고 export로 가시화한다(#92).
+export const TIMETREE_API_CLIENT = 'web/2.1.0/en';
+
 export type ObserverMessageEvent = {
   origin: string;
   data: unknown;
@@ -29,7 +33,7 @@ function buildPageFetchJson(): PageFetchJson {
       method: 'GET',
       credentials: 'include',
       headers: {
-        'x-timetreea': 'web/2.1.0/en',
+        'x-timetreea': TIMETREE_API_CLIENT,
         'x-csrf-token': csrfToken,
         'content-type': 'application/json',
       },

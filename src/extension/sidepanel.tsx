@@ -17,6 +17,7 @@ import {
 } from './sidepanel-export-policy.js';
 import { CalendarList } from './components/CalendarList.js';
 import { describeWarning } from './warning-copy.js';
+import { describeFetchFailure, classifyFetchIssues } from './fetch-failure-copy.js';
 import { computeVirtualWindow } from './virtual-window.js';
 import { aggregateByCalendar, aggregateByLabel, groupWarnings, aggregateContentSignals } from './dashboard-aggregate.js';
 import { formatEventMeta } from './event-meta.js';
@@ -350,7 +351,8 @@ async function loadCalendars(options: { silentFallback?: boolean } = {}): Promis
         showState('idle');
         return;
       }
-      showError(`캘린더 로드 실패: ${res.issues.join(', ')}`);
+      console.warn('캘린더 로드 실패:', res.issues.join(', '));
+      showError(describeFetchFailure(classifyFetchIssues(res.issues), res.issues).title);
       return;
     }
     loadedCalendars = res.calendars;
@@ -404,12 +406,14 @@ async function analyzeEvents(): Promise<void> {
         calendarId,
       });
       if (!res.ok) {
-        showError(`이벤트 로드 실패 (calendar ${calendarId}): ${res.issues.join(', ')}`);
+        console.warn(`이벤트 로드 실패 calendar ${calendarId}:`, res.issues.join(', '));
+        showError(describeFetchFailure(classifyFetchIssues(res.issues), res.issues).title);
         return;
       }
       allRaw.push(...res.events);
     } catch (err) {
-      showError(`오류: ${errorMessage(err)}`);
+      console.warn('이벤트 로드 오류(transient):', errorMessage(err));
+      showError(describeFetchFailure('transient', [errorMessage(err)]).title);
       return;
     }
 
