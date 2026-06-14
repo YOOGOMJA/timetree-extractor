@@ -339,14 +339,45 @@ function renderRecentExports(records: ExportHistoryRecord[]): void {
   render(
     <div>
       {records.map((r, i) => (
-        <div class="recent-item" key={i}>
+        // 재방문(#115): 클릭하면 그때 기간으로 setup을 연다. 캘린더는 데이터 최소화로
+        // 개수만 저장돼(ids 없음) 복원 불가 — 기간만 프리필하고 캘린더는 다시 고른다.
+        <div
+          class="recent-item recent-reuse"
+          key={i}
+          role="button"
+          tabIndex={0}
+          title="이 기간으로 다시 시작"
+          onClick={() => { void reuseExport(r); }}
+          onKeyDown={(e: KeyboardEvent) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); void reuseExport(r); } }}
+        >
           <div>{historyDateFmt.format(r.at)} · {r.format.toUpperCase()} · {r.exportCount}건</div>
-          <div class="meta">캘린더 {r.calendarCount}개 · {r.fromDate} ~ {r.toDate}{r.warningCount > 0 ? ` · 경고 ${r.warningCount}` : ''}</div>
+          <div class="meta">캘린더 {r.calendarCount}개 · {r.fromDate || '전체'} ~ {r.toDate || '전체'}{r.warningCount > 0 ? ` · 경고 ${r.warningCount}` : ''}</div>
         </div>
       ))}
     </div>,
     list,
   );
+}
+
+// 최근 내보내기 재사용(#115): 캘린더가 없으면 로드 후 setup으로, 그때 기간을 복원.
+async function reuseExport(record: ExportHistoryRecord): Promise<void> {
+  if (loadedCalendars.length === 0) {
+    await loadCalendars(); // 성공 시 setup으로 전환 + 기본 프리필
+  } else {
+    showState('setup');
+  }
+  applyRangeToSetup(record.fromDate, record.toDate);
+}
+
+// 기록의 기간을 setup 입력에 적용. 둘 다 비었으면(전체 기간) 체크 ON, 아니면 날짜 복원.
+function applyRangeToSetup(fromDate: string, toDate: string): void {
+  const all = document.getElementById('range-all') as HTMLInputElement | null;
+  const from = document.getElementById('date-from') as HTMLInputElement | null;
+  const to = document.getElementById('date-to') as HTMLInputElement | null;
+  const isFull = !fromDate && !toDate;
+  if (all) all.checked = isFull;
+  if (from) { from.disabled = isFull; if (!isFull) from.value = fromDate; }
+  if (to) { to.disabled = isFull; if (!isFull) to.value = toDate; }
 }
 
 // historySeq: idle 진입의 fire-and-forget refresh와 clear 후 refresh가 겹칠 때 오래된
