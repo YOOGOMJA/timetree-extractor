@@ -770,7 +770,20 @@ document.addEventListener('DOMContentLoaded', () => {
     openTimetreeTab(); // TimeTree 탭으로 보내 재로그인(#113 J3). 이후 "다시 시도"로 이어감.
   });
 
-  document.getElementById('btn-clear-history')?.addEventListener('click', async () => {
+  // 파괴적 동작은 한 번 더 눌러 확인(#104). 3초 안에 다시 누르면 실제 삭제.
+  let clearArmed = false;
+  let clearTimer: ReturnType<typeof setTimeout> | undefined;
+  document.getElementById('btn-clear-history')?.addEventListener('click', async (e) => {
+    const btn = e.currentTarget as HTMLButtonElement;
+    if (!clearArmed) {
+      clearArmed = true;
+      btn.textContent = '한 번 더 누르면 삭제';
+      clearTimer = setTimeout(() => { clearArmed = false; btn.textContent = '기록 지우기'; }, 3000);
+      return;
+    }
+    clearTimeout(clearTimer);
+    clearArmed = false;
+    btn.textContent = '기록 지우기';
     await clearHistory();
     refreshRecentExports();
   });
