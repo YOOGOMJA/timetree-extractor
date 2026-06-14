@@ -76,6 +76,14 @@ function showFetchError(kind: ReturnType<typeof classifyFetchIssues>, issues: st
   showState('error');
 }
 
+// 로딩 화면 진행 텍스트(#111). stage=무엇을 기다리는지, progress=얼마나.
+function setLoadingProgress(stage: string, progress = ''): void {
+  const s = document.getElementById('load-stage');
+  const p = document.getElementById('load-progress');
+  if (s) s.textContent = stage;
+  if (p) p.textContent = progress;
+}
+
 function formatEventDate(event: NormalizedCalendarEvent): string {
   if (event.start.kind === 'date') return event.start.date;
   // 로케일은 사용자 환경에 위임(undefined) — 하드코딩 'ko-KR' 제거(#70 i18n).
@@ -398,6 +406,7 @@ let lastTotalFetched = 0;
 // 조용히 복귀한다 — 페이지 로딩 중 패널을 여는 흔한 케이스에서 겁주지 않기 위함.
 async function loadCalendars(options: { silentFallback?: boolean } = {}): Promise<void> {
   showState('loading');
+  setLoadingProgress('캘린더 목록 불러오는 중…');
   try {
     const res = await sendToContentScript<FetchCalendarsResponse>({ type: 'FETCH_CALENDARS' });
     if (!res.ok) {
@@ -450,13 +459,18 @@ async function analyzeEvents(): Promise<void> {
   }
 
   showState('loading');
+  setLoadingProgress('일정 수집·분석 중', `캘린더 ${calendarIds.length}개 준비 중…`);
 
   const allRaw: RawTimeTreeEvent[] = [];
   const labelMap = new Map<number, RawTimeTreeLabel[]>();
   // 캘린더별 부분 실패를 수집해 성공분으로 계속한다(#112). 이벤트 fetch만 hard-fail이던
   // 비대칭(라벨은 이미 soft-fallback)을 해소 — no-silent-loss 정신과 정합.
   const failedCalendars: { calendarId: number; kind: ReturnType<typeof classifyFetchIssues> }[] = [];
+  let calIndex = 0;
   for (const calendarId of calendarIds) {
+    calIndex += 1;
+    // 진행감(#111): 다중 캘린더 전량 fetch는 오래 걸려 '멈춘 듯' 보일 수 있다.
+    setLoadingProgress('일정 수집·분석 중', `캘린더 ${calendarIds.length}개 중 ${calIndex}개 · ${allRaw.length}건 수집됨`);
     try {
       const res = await sendToContentScript<FetchEventsResponse>({
         type: 'FETCH_EVENTS',
