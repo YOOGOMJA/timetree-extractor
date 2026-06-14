@@ -48,6 +48,7 @@
 | ledger(signature) | big-count + 세그먼트 바 + 4줄 회계(포함/기간밖/형식/실패). |
 | sticky exportbar | 하단 고정·frosted. **1차 액션을 스크롤 바닥에서 끌어올림**. |
 | 상태(빈/로딩/오류) | 로딩=실제 spinner + 단계 라벨 + 진행 카운트. 오류=`role="alert" aria-live="assertive"`, 로그인 만료 전용 카피·동선. |
+| **긴 뷰포트 정렬** | 활성 화면 컨테이너는 **패널 높이를 채워야** 함(`display:flex; flex-direction:column; min-height:100%`). 안 그러면 진입·로딩·오류의 세로 중앙정렬이 무효가 돼 콘텐츠가 위로 쏠리고 아래가 빈다(긴 사이드패널에서 발생). 단일 초점 화면(진입·로딩·오류)=`flex:1`/`justify-content:center`, 콘텐츠 화면(설정·대시보드·상세·완료)=상단 정렬+스크롤, sticky 내보내기 bar=하단. |
 | 파괴적 | "한 번 더 누르기" 인라인 확인(기록 지우기). |
 
 ## 적용 순서 (단계 5)
