@@ -63,7 +63,10 @@ body{font-family:var(--font-body);background:
 .frame .titlebar .ctx::before{content:"";width:6px;height:6px;border-radius:50%;background:var(--pine)}
 .panel{flex:1;overflow-y:auto;overscroll-behavior:contain;position:relative}
 [data-screen]{display:none;padding:18px 16px}
-[data-screen].on{display:block}
+/* 활성 화면은 패널 높이를 채운다 → 긴 뷰포트에서도 중앙정렬(entry)·하단고정(exportbar) 정확 */
+[data-screen].on{display:flex;flex-direction:column;min-height:100%}
+/* 단일 초점 화면(오류)은 긴 뷰포트에서 세로 중앙정렬 — 진입·로딩과 통일 */
+[data-screen="error"].on{justify-content:center}
 
 /* ============ 공통 컴포넌트 (단계 4) ============ */
 .btn{font-family:var(--font-body);font-size:13px;font-weight:600;border-radius:var(--radius-sm);
@@ -148,7 +151,7 @@ body{font-family:var(--font-body);background:
 .banner a{color:var(--amber);font-weight:600;text-decoration:underline;white-space:nowrap}
 
 /* 진입(idle) */
-.entry{min-height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:14px;padding:24px 18px}
+.entry{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:14px;padding:24px 18px}
 .entry .hero{font-family:var(--font-display);font-size:25px;font-weight:700;line-height:1.15;letter-spacing:-.02em}
 .entry .lead{color:var(--slate);font-size:13px;line-height:1.6;max-width:250px}
 .entry .recent{width:100%;margin-top:10px;text-align:left;border-top:1px solid var(--line-faint);padding-top:12px}
@@ -160,7 +163,7 @@ body{font-family:var(--font-body);background:
 .linkbtn:hover{color:var(--danger)}
 
 /* 로딩 */
-.loading{min-height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;text-align:center;padding:30px}
+.loading{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;text-align:center;padding:30px}
 .spin{width:34px;height:34px;border-radius:50%;border:3px solid var(--line);border-top-color:var(--pine);
   animation:sp .8s linear infinite}
 @media (prefers-reduced-motion:reduce){.spin{animation:none}}
@@ -479,6 +482,8 @@ document.getElementById('themeBtn').onclick=()=>{const h=document.documentElemen
 (function initFromUrl(){
   const p=new URLSearchParams(location.hash.slice(1));
   if(p.get('theme')==='dark') document.documentElement.dataset.theme='dark';
+  if(p.get('frame')==='tall') document.querySelector('.frame').style.height='94vh'; // 긴 사이드패널 모사
+
   const ids=SCREENS.map(s=>s[0]);
   go(ids.includes(p.get('screen'))?p.get('screen'):'idle');
 })();
