@@ -21,6 +21,7 @@ import { describeFetchFailure, classifyFetchIssues } from './fetch-failure-copy.
 import { computeVirtualWindow } from './virtual-window.js';
 import { aggregateByCalendar, aggregateByLabel, groupWarnings, aggregateContentSignals } from './dashboard-aggregate.js';
 import { formatEventMeta } from './event-meta.js';
+import { classifyNormalizeFailure, summarizeFidelity, type FidelityCounts, type FidelityKey } from './fidelity.js';
 import { labelChipColors } from './label-color.js';
 import type { ExportHistoryRecord } from './export-history.js';
 import { loadHistory, recordExport, clearHistory } from './export-history-store.js';
@@ -106,37 +107,44 @@ const DETAIL_ROW_HEIGHT = 48;
 
 function renderResults(
   events: NormalizedCalendarEvent[],
-  totalFetched: number,
+  counts: Omit<FidelityCounts, 'totalFetched'> & { totalFetched: number },
 ): void {
-  // 충실도 hero: 내보낼 N / 전체 M / 제외 D(드롭+범위밖). no-silent-loss를 한눈에.
-  const exportCount = events.length;
-  const dropped = Math.max(0, totalFetched - exportCount);
-  document.getElementById('fid-export')!.textContent = String(exportCount);
+  // 충실도 회계(#114): 제외를 한 숫자로 합치지 않고 기간밖/형식/처리실패로 분해.
+  // normalize 실패(형식·처리)를 명시 카운트해 silent-loss를 없앤다.
+  const { totalFetched, exported } = counts;
+  const { segments, accountedFor } = summarizeFidelity(counts);
+  if (!accountedFor) console.warn('fidelity: 합계 불일치(silent-loss 가능)', counts);
+  document.getElementById('fid-export')!.textContent = String(exported);
   const subEl = document.getElementById('fid-sub')!;
   subEl.textContent = '';
   subEl.append(`전체 ${totalFetched}건`);
-  if (dropped > 0) {
+  for (const seg of segments) {
+    if (seg.key === 'exported') continue;
     const span = document.createElement('span');
-    span.className = 'dropped';
-    span.textContent = `제외 ${dropped}건`;
+    // 형식·처리 실패는 손실이므로 강조(danger), 기간밖/삭제는 중립.
+    if (seg.key === 'unsupported' || seg.key === 'failed') span.className = 'dropped';
+    const shortLabel: Record<FidelityKey, string> = { exported: '포함', rangeExcluded: '기간 밖', unsupported: '형식', failed: '실패', deactivated: '삭제' };
+    span.textContent = `${shortLabel[seg.key]} ${seg.count}건`;
     subEl.append(' · ', span);
   }
-  const ratio = totalFetched > 0 ? Math.round((exportCount / totalFetched) * 100) : 100;
+  const ratio = totalFetched > 0 ? Math.round((exported / totalFetched) * 100) : 100;
   (document.getElementById('fid-bar') as HTMLElement).style.width = `${ratio}%`;
 
-  // 제외가 있으면 "왜·괜찮은지" 안심 카피(#78 P0-3). 마이그레이터의 불안을 행동가능 정보로.
+  // 못 옮긴(형식·처리 실패) 건이 있으면 행동가능 안심 카피(#78·#114).
+  const lost = counts.unsupported + counts.failed;
   const fidNote = document.getElementById('fid-note')!;
-  if (dropped > 0) {
-    // dropped = 선택 기간 밖 + Google·Apple이 못 읽는 형식(비표준 반복 등) 양쪽을 합친 수.
-    // 두 사유를 모두 정직하게 안내한다(codex 리뷰).
-    fidNote.textContent = '제외에는 선택한 기간 밖 일정과, Google·Apple 캘린더가 안전하게 읽지 못하는 형식(예: 비표준 반복)이 포함됩니다. 후자는 아래 “발견된 이슈”에서 볼 수 있습니다.';
+  if (lost > 0) {
+    fidNote.textContent = `못 옮긴 ${lost}건(형식 미지원·처리 실패)은 아래 “발견된 이슈”에서 확인하세요. 기간 밖 제외는 의도된 필터입니다.`;
+    fidNote.removeAttribute('hidden');
+  } else if (counts.rangeExcluded > 0) {
+    fidNote.textContent = '제외는 모두 선택한 기간 밖 일정입니다(형식·처리 손실 없음).';
     fidNote.removeAttribute('hidden');
   } else {
     fidNote.setAttribute('hidden', '');
   }
 
   renderDashboardSections(events);
-  document.getElementById('detail-count')!.textContent = `${exportCount}건`;
+  document.getElementById('detail-count')!.textContent = `${exported}건`;
 
   showState('results');
 }
@@ -437,21 +445,29 @@ async function analyzeEvents(): Promise<void> {
 
   lastTotalFetched = allRaw.length;
 
+  // no-silent-loss 회계(#114): 모든 수집분을 분류해 센다. 특히 normalize 실패는
+  // 과거에 어느 집계에도 안 잡혔다(silent loss) — 형식 미지원/처리 실패로 명시 카운트.
   const normalizedAll: NormalizedCalendarEvent[] = [];
   const calendarMap = new Map(loadedCalendars.map((c) => [c.id, c]));
+  let deactivated = 0, unsupported = 0, failed = 0;
   for (const raw of allRaw) {
-    if (raw.deactivatedAt != null) continue;
+    if (raw.deactivatedAt != null) { deactivated += 1; continue; }
     const result = normalizeRawTimeTreeEvent(raw, {
       calendar: calendarMap.get(raw.calendarId),
       labels: labelMap.get(raw.calendarId) ?? [],
     });
-    if (!result.ok) continue;
+    if (!result.ok) {
+      if (classifyNormalizeFailure(result.issues) === 'unsupported') unsupported += 1;
+      else failed += 1;
+      continue;
+    }
     normalizedAll.push(result.value);
   }
 
   const ranged = rangeMode.kind === 'range'
     ? filterEventsByRange(normalizedAll, rangeMode.range)
     : normalizedAll;
+  const rangeExcluded = normalizedAll.length - ranged.length;
   const normalized = linkRecurringOverrides(ranged);
   normalized.sort((a, b) => {
     const aMs = a.start.kind === 'date-time' ? a.start.epochMs : new Date(`${a.start.date}T00:00:00`).getTime();
@@ -460,7 +476,14 @@ async function analyzeEvents(): Promise<void> {
   });
 
   lastNormalized = normalized;
-  renderResults(normalized, lastTotalFetched);
+  renderResults(normalized, {
+    totalFetched: lastTotalFetched,
+    exported: normalized.length,
+    rangeExcluded,
+    unsupported,
+    failed,
+    deactivated,
+  });
 }
 
 function openWarningModal(): Promise<boolean> {
