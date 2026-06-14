@@ -475,7 +475,13 @@ function confirmClear(el){
   setTimeout(()=>{if(el.dataset.armed){delete el.dataset.armed;el.textContent='기록 지우기';el.style.color='';}},3000);
 }
 document.getElementById('themeBtn').onclick=()=>{const h=document.documentElement;h.dataset.theme=h.dataset.theme==='dark'?'light':'dark';};
-go('idle');
+// deep-link: #screen=results&theme=dark (공유·headless 캡쳐용)
+(function initFromUrl(){
+  const p=new URLSearchParams(location.hash.slice(1));
+  if(p.get('theme')==='dark') document.documentElement.dataset.theme='dark';
+  const ids=SCREENS.map(s=>s[0]);
+  go(ids.includes(p.get('screen'))?p.get('screen'):'idle');
+})();
 </script>
 </body>
 </html>
