@@ -55,9 +55,24 @@ function showState(state: State): void {
   if (state === 'idle') void refreshRecentExports();
 }
 
+// 오류 화면에서 "다시 시도"가 실행할 동작(#113 J4). idle 리셋 대신 컨텍스트 보존 재시도.
+let retryAction: (() => void) | null = null;
+
 function showError(message: string): void {
   const el = document.getElementById('error-message');
   if (el) el.textContent = message;
+  // 일반 오류는 재로그인 버튼 숨김.
+  document.getElementById('btn-relogin')?.setAttribute('hidden', '');
+  showState('error');
+}
+
+// fetch 실패 전용 오류 화면(#113): auth(로그인 만료)면 전용 카피 + 재로그인 버튼.
+// onRetry는 컨텍스트(선택 캘린더·기간)를 보존한 재시도 — idle 리셋이 아니다.
+function showFetchError(kind: ReturnType<typeof classifyFetchIssues>, issues: string[], onRetry: () => void): void {
+  retryAction = onRetry;
+  const el = document.getElementById('error-message');
+  if (el) el.textContent = describeFetchFailure(kind, issues).title;
+  document.getElementById('btn-relogin')?.toggleAttribute('hidden', kind !== 'auth');
   showState('error');
 }
 
@@ -360,7 +375,7 @@ async function loadCalendars(options: { silentFallback?: boolean } = {}): Promis
         return;
       }
       console.warn('캘린더 로드 실패:', res.issues.join(', '));
-      showError(describeFetchFailure(classifyFetchIssues(res.issues), res.issues).title);
+      showFetchError(classifyFetchIssues(res.issues), res.issues, () => { void loadCalendars(); });
       return;
     }
     loadedCalendars = res.calendars;
@@ -446,10 +461,11 @@ async function analyzeEvents(): Promise<void> {
     }
   }
 
-  // 전부 실패면 보여줄 게 없으니 오류 화면(가장 흔한 사유로 안내).
+  // 전부 실패면 보여줄 게 없으니 오류 화면. 우선순위 auth > contract > transient.
   if (allRaw.length === 0 && failedCalendars.length > 0) {
-    const kind = failedCalendars.some((f) => f.kind === 'contract') ? 'contract' : 'transient';
-    showError(describeFetchFailure(kind).title);
+    const kinds = failedCalendars.map((f) => f.kind);
+    const kind = kinds.includes('auth') ? 'auth' : kinds.includes('contract') ? 'contract' : 'transient';
+    showFetchError(kind, [], () => { void analyzeEvents(); }); // 컨텍스트 보존 재시도(#113)
     return;
   }
 
@@ -707,9 +723,20 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   document.getElementById('btn-retry')?.addEventListener('click', () => {
+    // 컨텍스트 보존 재시도(#113 J4): 마지막 실패한 동작을 그대로 다시. 없으면 idle.
+    if (retryAction) {
+      const action = retryAction;
+      retryAction = null;
+      action();
+      return;
+    }
     lastNormalized = [];
     lastTotalFetched = 0;
     showState('idle');
+  });
+
+  document.getElementById('btn-relogin')?.addEventListener('click', () => {
+    openTimetreeTab(); // TimeTree 탭으로 보내 재로그인(#113 J3). 이후 "다시 시도"로 이어감.
   });
 
   document.getElementById('btn-clear-history')?.addEventListener('click', async () => {

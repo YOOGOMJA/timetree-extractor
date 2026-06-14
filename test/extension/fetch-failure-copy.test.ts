@@ -2,9 +2,9 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { describeFetchFailure, classifyFetchIssues } from '../../src/extension/fetch-failure-copy.js';
 
-test('classifyFetchIssues: HTTP 상태는 transient (#92)', () => {
-  assert.equal(classifyFetchIssues(['HTTP 401: /api/v1/calendar']), 'transient');
+test('classifyFetchIssues: 비-auth HTTP 상태는 transient (#92, #113)', () => {
   assert.equal(classifyFetchIssues(['HTTP 500: /api/v1/calendar']), 'transient');
+  assert.equal(classifyFetchIssues(['HTTP 503: /api/v1/calendar']), 'transient');
 });
 
 test('classifyFetchIssues: 네트워크 실패는 transient (#92)', () => {
@@ -36,4 +36,13 @@ test('transient: 접근 실패 안내 (#92)', () => {
   const out = describeFetchFailure('transient', ['HTTP 401: /api/v1/...']);
   assert.match(out.title, /접근하지 못했/);
   assert.match(out.detail, /HTTP 401/);
+});
+
+test('classifyFetchIssues: HTTP 401/403은 auth (#113)', () => {
+  assert.equal(classifyFetchIssues(['HTTP 401: /api/v1/calendar']), 'auth');
+  assert.equal(classifyFetchIssues(['HTTP 403: /api/v1/calendar']), 'auth');
+});
+
+test('describeFetchFailure: auth는 로그인 만료 안내 (#113)', () => {
+  assert.match(describeFetchFailure('auth').title, /로그인이 풀렸/);
 });
