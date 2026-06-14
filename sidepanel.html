@@ -104,6 +104,9 @@
     #state-detail .detail-count-head { flex-shrink: 0; font-size: 11px; color: #64748b; margin-bottom: 6px; font-variant-numeric: tabular-nums; }
     #state-detail .detail-scroll { flex: 1; height: auto; }
     .partial-banner { background: #fffbeb; border: 1px solid #fde68a; color: #92400e; font-size: 12px; line-height: 1.5; border-radius: 6px; padding: 9px 11px; margin-bottom: 12px; }
+    .verify-list { list-style: none; padding: 0; display: flex; flex-direction: column; gap: 7px; }
+    .verify-list li { position: relative; padding-left: 20px; font-size: 12px; color: #374151; line-height: 1.5; }
+    .verify-list li::before { content: "✓"; position: absolute; left: 0; top: 0; color: #16a34a; font-weight: 700; }
     [hidden] { display: none !important; }
   </style>
 </head>
@@ -221,6 +224,14 @@
           </ol>
           <p class="guide-note">iPhone에서는 <code>.ics</code> 파일을 탭해 캘린더에 추가할 수 있습니다.</p>
         </div>
+      </div>
+      <div class="dash-section">
+        <p class="eyebrow">잘 들어갔는지 확인</p>
+        <ul class="verify-list">
+          <li>가져온 뒤 반복 일정 1건(예: 생일·기념일)을 열어 <strong>날짜·시간이 맞는지</strong> 확인하세요.</li>
+          <li>같은 일정이 <strong>두 번</strong> 보이면, 가져온 캘린더를 통째로 지우고 한 번만 다시 가져오면 됩니다.</li>
+          <li>시간이 어긋나면 캘린더 앱의 <strong>표시 시간대</strong>가 한국 시간인지 확인하세요.</li>
+        </ul>
       </div>
       <div class="dash-section">
         <button id="btn-guide-back" class="btn-secondary">대시보드로</button>
