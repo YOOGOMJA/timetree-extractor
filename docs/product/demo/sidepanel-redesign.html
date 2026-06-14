@@ -1,0 +1,481 @@
+<!DOCTYPE html>
+<html lang="ko" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>TimeTree Exporter — 사이드 패널 재디자인 데모</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css">
+<style>
+/* ============ 디자인 토큰 (단계 4 산출물) ============ */
+:root{
+  --pine:#1F6B4F; --pine-deep:#16513B; --pine-weak:#E7F0EB;
+  --ink:#16241F; --slate:#5B6B63; --slate-faint:#8A998F;
+  --paper:#F7F8F6; --card:#FFFFFF; --line:#E3E7E3; --line-faint:#EEF1EE;
+  --amber:#B45309; --amber-weak:#FBF3E3; --amber-line:#EAD9B4;
+  --danger:#B23A3A; --danger-weak:#FBECEC;
+  --space-1:4px; --space-2:8px; --space-3:12px; --space-4:16px; --space-5:24px;
+  --radius-sm:6px; --radius:10px; --radius-lg:14px; --radius-pill:999px;
+  --font-display:"Space Grotesk",sans-serif;
+  --font-body:"Pretendard",system-ui,sans-serif;
+  --shadow:0 1px 2px rgba(22,36,31,.06),0 8px 24px rgba(22,36,31,.06);
+}
+[data-theme="dark"]{
+  --pine:#5FBF95; --pine-deep:#3FA37B; --pine-weak:#16312596;
+  --ink:#E8EFEA; --slate:#A6B5AC; --slate-faint:#76857C;
+  --paper:#0E1613; --card:#15201B; --line:#243029; --line-faint:#1B2620;
+  --amber:#E0A45C; --amber-weak:#2A2113; --amber-line:#3D2F16;
+  --danger:#E08585; --danger-weak:#2A1717;
+  --shadow:0 1px 2px rgba(0,0,0,.3),0 10px 28px rgba(0,0,0,.35);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:var(--font-body);background:
+   radial-gradient(120% 80% at 50% -10%, color-mix(in srgb,var(--pine) 7%, var(--paper)) 0%, var(--paper) 55%);
+   color:var(--ink);min-height:100vh;display:flex;flex-direction:column;align-items:center;
+   padding:24px 16px 80px;-webkit-font-smoothing:antialiased}
+@media (prefers-reduced-motion:no-preference){
+  .panel [data-screen]{animation:rise .28s cubic-bezier(.2,.7,.2,1)}
+  @keyframes rise{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+}
+
+/* ============ 데모 크롬 (실제 UI 아님) ============ */
+.demo-bar{display:flex;flex-wrap:wrap;gap:6px;align-items:center;justify-content:center;
+  max-width:760px;margin-bottom:20px}
+.demo-bar h1{font-family:var(--font-display);font-size:15px;font-weight:600;margin-right:8px;letter-spacing:-.01em}
+.demo-bar .nav{display:flex;flex-wrap:wrap;gap:4px}
+.demo-bar button{font-family:var(--font-body);font-size:12px;color:var(--slate);background:transparent;
+  border:1px solid var(--line);border-radius:var(--radius-pill);padding:5px 11px;cursor:pointer;transition:.15s}
+.demo-bar button:hover{color:var(--ink);border-color:var(--pine);background:var(--pine-weak)}
+.demo-bar button[aria-current="true"]{color:#fff;background:var(--pine);border-color:var(--pine)}
+.demo-note{max-width:760px;font-size:11px;color:var(--slate-faint);text-align:center;margin-bottom:18px;line-height:1.6}
+
+/* ============ 패널 프레임 (사이드 패널 ~340px 모사) ============ */
+.frame{width:340px;border:1px solid var(--line);border-radius:18px;background:var(--card);
+  box-shadow:var(--shadow);overflow:hidden;position:relative;height:600px;display:flex;flex-direction:column}
+.frame .titlebar{flex-shrink:0;display:flex;align-items:center;gap:8px;padding:10px 14px;border-bottom:1px solid var(--line-faint)}
+.frame .titlebar .mark{width:20px;height:20px;border-radius:6px;background:var(--pine);flex-shrink:0;
+  display:grid;place-items:center}
+.frame .titlebar .mark svg{width:13px;height:13px}
+.frame .titlebar .name{font-family:var(--font-display);font-weight:600;font-size:13px;letter-spacing:-.01em}
+.frame .titlebar .ctx{margin-left:auto;font-size:10.5px;color:var(--pine);display:flex;align-items:center;gap:4px}
+.frame .titlebar .ctx::before{content:"";width:6px;height:6px;border-radius:50%;background:var(--pine)}
+.panel{flex:1;overflow-y:auto;overscroll-behavior:contain;position:relative}
+[data-screen]{display:none;padding:18px 16px}
+[data-screen].on{display:block}
+
+/* ============ 공통 컴포넌트 (단계 4) ============ */
+.btn{font-family:var(--font-body);font-size:13px;font-weight:600;border-radius:var(--radius-sm);
+  padding:10px 16px;border:1px solid transparent;cursor:pointer;transition:.15s;display:inline-flex;
+  align-items:center;justify-content:center;gap:7px;touch-action:manipulation}
+.btn-primary{background:var(--pine);color:#fff}
+.btn-primary:hover{background:var(--pine-deep)}
+.btn-primary:disabled{background:color-mix(in srgb,var(--pine) 45%,var(--card));cursor:not-allowed}
+.btn-ghost{background:transparent;color:var(--ink);border-color:var(--line)}
+.btn-ghost:hover{border-color:var(--pine);color:var(--pine);background:var(--pine-weak)}
+.btn-block{width:100%}
+:where(button,a,input,[tabindex]):focus-visible{outline:2px solid var(--pine);outline-offset:2px;border-radius:4px}
+
+.eyebrow{font-family:var(--font-display);font-size:10.5px;font-weight:600;letter-spacing:.08em;
+  text-transform:uppercase;color:var(--slate-faint);margin-bottom:10px}
+.section{padding:16px 0;border-top:1px solid var(--line-faint)}
+.section:first-child{border-top:none;padding-top:2px}
+.muted{color:var(--slate);font-size:12px;line-height:1.6}
+.num{font-family:var(--font-display);font-variant-numeric:tabular-nums;font-feature-settings:"tnum"}
+
+/* 배지 (개인/공유) */
+.badge{display:inline-flex;align-items:center;gap:3px;font-size:10px;font-weight:600;
+  padding:2px 7px;border-radius:var(--radius-pill);line-height:1.4}
+.badge-share{background:var(--pine-weak);color:var(--pine-deep)}
+.badge-self{background:var(--line-faint);color:var(--slate)}
+[data-theme="dark"] .badge-self{color:var(--slate)}
+
+/* 캘린더 행 */
+.cal-row{display:flex;align-items:center;gap:9px;padding:9px 0;border-top:1px solid var(--line-faint)}
+.cal-row:first-of-type{border-top:none}
+.cal-row .dot{width:9px;height:9px;border-radius:50%;flex-shrink:0}
+.cal-row .nm{font-size:13px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cal-row .ct{margin-left:auto;color:var(--slate);font-size:12px;flex-shrink:0}
+.cal-row input[type=checkbox]{width:17px;height:17px;accent-color:var(--pine);flex-shrink:0}
+
+/* 칩(카테고리) */
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{display:inline-flex;align-items:center;gap:5px;font-size:11.5px;padding:4px 10px;border-radius:var(--radius-pill);
+  background:var(--pine-weak);color:var(--pine-deep)}
+.chip .c{opacity:.7}
+
+/* 이슈 드릴다운 */
+.issue{border:1px solid var(--amber-line);background:var(--amber-weak);border-radius:var(--radius-sm);
+  margin-bottom:7px;overflow:hidden}
+.issue summary{list-style:none;cursor:pointer;display:flex;align-items:center;gap:8px;padding:9px 11px;
+  font-size:12px;font-weight:600;color:var(--amber)}
+.issue summary::-webkit-details-marker{display:none}
+.issue summary:hover{background:color-mix(in srgb,var(--amber) 8%,transparent)}
+.issue summary .chev{margin-left:auto;transition:transform .2s}
+.issue[open] summary .chev{transform:rotate(90deg)}
+.issue .body{padding:0 11px 10px;font-size:11px;color:var(--amber);line-height:1.6}
+.issue .body .ev{padding:4px 0;border-top:1px dashed var(--amber-line);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+/* ============ Signature: 정직한 영수증(ledger) 충실도 ============ */
+.ledger{margin-top:4px}
+.ledger .big{font-family:var(--font-display);font-size:40px;font-weight:700;line-height:1;letter-spacing:-.02em;
+  font-variant-numeric:tabular-nums}
+.ledger .big .u{font-size:15px;font-weight:600;color:var(--slate);margin-left:6px;letter-spacing:0}
+.ledger .rule{height:2px;background:linear-gradient(90deg,var(--pine),color-mix(in srgb,var(--pine) 10%,transparent));
+  margin:12px 0;border-radius:2px}
+.tally{display:flex;flex-direction:column;gap:7px}
+.tally .ln{display:flex;align-items:center;gap:8px;font-size:11.5px}
+.tally .ln .mk{font-family:var(--font-display);width:16px;text-align:center;color:var(--slate-faint)}
+.tally .ln .lb{color:var(--slate)}
+.tally .ln .vl{margin-left:auto;font-variant-numeric:tabular-nums;color:var(--ink)}
+.tally .ln.inc .mk{color:var(--pine)}
+.tallybar{display:flex;height:6px;border-radius:3px;overflow:hidden;margin:10px 0 2px;background:var(--line-faint)}
+.tallybar i{display:block;height:100%}
+.tallybar .s-inc{background:var(--pine)}
+.tallybar .s-range{background:var(--slate-faint)}
+.tallybar .s-fmt{background:var(--amber)}
+.tallybar .s-fail{background:var(--danger)}
+
+/* 안심 라인 */
+.assure{display:flex;align-items:flex-start;gap:7px;font-size:11px;color:var(--slate);line-height:1.55;
+  background:var(--pine-weak);border-radius:var(--radius-sm);padding:9px 11px;margin-top:12px}
+.assure svg{flex-shrink:0;margin-top:1px;color:var(--pine)}
+
+/* 부분 실패 배너 */
+.banner{display:flex;align-items:flex-start;gap:8px;background:var(--amber-weak);border:1px solid var(--amber-line);
+  border-radius:var(--radius-sm);padding:10px 12px;font-size:11.5px;color:var(--amber);line-height:1.55;margin-bottom:14px}
+.banner a{color:var(--amber);font-weight:600;text-decoration:underline;white-space:nowrap}
+
+/* 진입(idle) */
+.entry{min-height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:14px;padding:24px 18px}
+.entry .hero{font-family:var(--font-display);font-size:25px;font-weight:700;line-height:1.15;letter-spacing:-.02em}
+.entry .lead{color:var(--slate);font-size:13px;line-height:1.6;max-width:250px}
+.entry .recent{width:100%;margin-top:10px;text-align:left;border-top:1px solid var(--line-faint);padding-top:12px}
+.recent-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}
+.recent-item{display:flex;gap:8px;align-items:baseline;font-size:12px;padding:7px 8px;border-radius:var(--radius-sm);cursor:pointer}
+.recent-item:hover{background:var(--pine-weak)}
+.recent-item .meta{color:var(--slate-faint);font-size:11px;margin-left:auto;font-variant-numeric:tabular-nums}
+.linkbtn{background:none;border:none;color:var(--slate-faint);font-size:11px;text-decoration:underline;cursor:pointer;font-family:var(--font-body)}
+.linkbtn:hover{color:var(--danger)}
+
+/* 로딩 */
+.loading{min-height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;text-align:center;padding:30px}
+.spin{width:34px;height:34px;border-radius:50%;border:3px solid var(--line);border-top-color:var(--pine);
+  animation:sp .8s linear infinite}
+@media (prefers-reduced-motion:reduce){.spin{animation:none}}
+@keyframes sp{to{transform:rotate(360deg)}}
+.loading .stage{font-weight:600;font-size:14px}
+.loading .prog{font-size:12px;color:var(--slate);font-variant-numeric:tabular-nums}
+.loading .pbar{width:180px;height:4px;border-radius:2px;background:var(--line-faint);overflow:hidden}
+.loading .pbar i{display:block;height:100%;width:38%;background:var(--pine);border-radius:2px}
+
+/* 필드 */
+.field{width:100%;font-family:var(--font-body);font-size:13px;padding:9px 11px;border:1px solid var(--line);
+  border-radius:var(--radius-sm);background:var(--card);color:var(--ink)}
+.field::placeholder{color:var(--slate-faint)}
+.toggle-row{display:flex;align-items:center;gap:9px;padding:10px 0}
+.toggle-row label{font-size:13px}
+.daterow{display:flex;gap:8px;margin-top:8px}
+.daterow.dim{opacity:.45;pointer-events:none}
+
+/* 가져오기 가이드 */
+.guide-h{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:600;margin-bottom:9px}
+.guide-h .ic{width:18px;height:18px;border-radius:5px;background:var(--pine-weak);display:grid;place-items:center;color:var(--pine-deep);font-size:11px;font-weight:700}
+.steps{list-style:none;counter-reset:s;display:flex;flex-direction:column;gap:8px;margin-bottom:8px}
+.steps li{counter-increment:s;position:relative;padding-left:25px;font-size:12px;color:var(--slate);line-height:1.5}
+.steps li::before{content:counter(s);position:absolute;left:0;top:-1px;width:18px;height:18px;border-radius:50%;
+  background:var(--pine-weak);color:var(--pine-deep);font-family:var(--font-display);font-size:10.5px;font-weight:600;display:grid;place-items:center}
+.steps a{color:var(--pine);font-weight:500}
+.verify{background:var(--pine-weak);border-radius:var(--radius-sm);padding:11px 12px;font-size:11.5px;color:var(--pine-deep);line-height:1.6;margin-top:6px}
+
+/* 상세 목록 */
+.detail-tools{display:flex;gap:8px;align-items:center;margin-bottom:10px}
+.iconbtn{width:34px;height:34px;flex-shrink:0;border:1px solid var(--line);border-radius:var(--radius-sm);
+  background:var(--card);cursor:pointer;display:grid;place-items:center;color:var(--ink)}
+.iconbtn:hover{border-color:var(--pine);color:var(--pine)}
+.ev-row{padding:9px 2px;border-top:1px solid var(--line-faint)}
+.ev-row:first-child{border-top:none}
+.ev-row .t{font-size:12.5px;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ev-row .d{font-size:11px;color:var(--slate);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-top:2px}
+.ev-row .d .b{color:var(--pine-deep)}
+
+/* sticky 내보내기 bar (F3) */
+.exportbar{position:sticky;bottom:0;background:color-mix(in srgb,var(--card) 88%,transparent);
+  backdrop-filter:blur(8px);border-top:1px solid var(--line);padding:12px 16px;margin:0 -16px -18px;
+  display:flex;flex-direction:column;gap:9px}
+.fmt{display:flex;gap:6px}
+.fmt label{flex:1;display:flex;align-items:center;justify-content:center;gap:6px;font-size:12px;
+  border:1px solid var(--line);border-radius:var(--radius-sm);padding:7px;cursor:pointer}
+.fmt input{accent-color:var(--pine)}
+.fmt label:has(input:checked){border-color:var(--pine);background:var(--pine-weak);color:var(--pine-deep);font-weight:600}
+
+/* 오류 */
+.errbox{background:var(--danger-weak);border:1px solid color-mix(in srgb,var(--danger) 40%,transparent);
+  border-radius:var(--radius);padding:16px;text-align:center;display:flex;flex-direction:column;gap:6px;align-items:center}
+.errbox .ic{width:34px;height:34px;border-radius:50%;background:color-mix(in srgb,var(--danger) 16%,transparent);
+  display:grid;place-items:center;color:var(--danger);font-size:18px}
+.errbox .ti{font-weight:600;font-size:14px}
+.errbox .ms{font-size:12px;color:var(--slate);line-height:1.6}
+
+/* 모달 */
+.modal-wrap{position:absolute;inset:0;background:rgba(10,20,16,.45);display:none;align-items:center;justify-content:center;padding:18px;z-index:5}
+.modal-wrap.on{display:flex}
+.modal{background:var(--card);border-radius:var(--radius-lg);width:100%;max-width:300px;overflow:hidden;box-shadow:var(--shadow)}
+.modal .mh{padding:13px 16px;border-bottom:1px solid var(--line-faint);font-weight:600;font-size:14px;display:flex;align-items:center;gap:8px}
+.modal .mb{padding:14px 16px;font-size:12px;color:var(--slate);line-height:1.65;max-height:300px;overflow-y:auto}
+.modal .mb b{color:var(--ink)}
+.consent{display:flex;gap:8px;align-items:flex-start;background:var(--amber-weak);border-radius:var(--radius-sm);padding:9px 10px;margin-top:10px;font-size:11.5px;color:var(--amber)}
+.consent input{accent-color:var(--pine);margin-top:1px}
+.modal .mf{padding:12px 16px;border-top:1px solid var(--line-faint);display:flex;gap:8px}
+.modal .mf .btn{flex:1}
+</style>
+</head>
+<body>
+
+<div class="demo-bar">
+  <h1>TimeTree Exporter · 재디자인 데모</h1>
+  <div class="nav" id="nav"></div>
+  <button id="themeBtn" style="margin-left:8px">◐ 테마</button>
+</div>
+<p class="demo-note">단계 3+4 산출물 — 디자인 시스템(토큰·다크모드) + 검토 P1 반영. 상단 칩으로 화면 전환, 패널 안에서 시나리오 클릭. 실제 확장(단계 5)은 이 토큰·레이아웃을 sidepanel.html/.tsx에 점진 적용.</p>
+
+<div class="frame">
+  <div class="titlebar">
+    <span class="mark"><svg viewBox="0 0 24 24" fill="none"><rect x="4" y="6" width="16" height="13" rx="2" fill="#fff"/><rect x="4" y="6" width="16" height="4" rx="2" fill="#cfe3d8"/><path d="M12 12v5m-3-2 3 3 3-3" stroke="#1F6B4F" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+    <span class="name">TimeTree Exporter</span>
+    <span class="ctx" id="ctx">연결됨</span>
+  </div>
+
+  <div class="panel" id="panel">
+
+    <!-- A. 비연결 -->
+    <section data-screen="disconnected">
+      <div class="entry">
+        <span class="mark" style="width:46px;height:46px;border-radius:13px;background:var(--pine-weak);display:grid;place-items:center">
+          <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="#1F6B4F" stroke-width="1.8"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 9h18M8 3v4M16 3v4"/></svg>
+        </span>
+        <div class="hero" style="font-size:20px">TimeTree에 연결되어 있지<br>않아요</div>
+        <p class="lead">TimeTree 웹에 로그인한 탭에서 이 패널을 열면 자동으로 연결됩니다.</p>
+        <button class="btn btn-primary" onclick="go('idle')">TimeTree 열기</button>
+        <div class="assure" style="max-width:260px">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3l7 4v5c0 4-3 7-7 9-4-2-7-5-7-9V7z"/></svg>
+          <span>모든 처리는 이 기기 안에서. 일정 데이터를 외부로 전송하지 않습니다.</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- B. 진입 -->
+    <section data-screen="idle">
+      <div class="entry">
+        <div class="hero">갇힌 일정을,<br>내 손으로 꺼내기</div>
+        <p class="lead">로그인된 TimeTree의 개인·공유 일정을 이 기기 안에서 ICS·JSON 파일로 내보냅니다.</p>
+        <button class="btn btn-primary" onclick="go('loading')" style="padding:11px 24px">캘린더 수집 시작</button>
+        <div class="assure" style="max-width:262px">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3l7 4v5c0 4-3 7-7 9-4-2-7-5-7-9V7z"/></svg>
+          <span>이 기기에서만 처리 · 아무것도 전송하지 않음 · 로그인 정보 저장 안 함</span>
+        </div>
+        <div class="recent">
+          <div class="recent-head"><span class="eyebrow" style="margin:0">최근 내보내기</span>
+            <button class="linkbtn" onclick="confirmClear(this)">기록 지우기</button></div>
+          <div class="recent-item" onclick="go('setup')" title="이 설정으로 다시 시작">
+            <span>2026-06-12</span><span class="badge badge-self">ICS</span>
+            <span class="meta">개인·가족 2개 · 142건</span></div>
+          <div class="recent-item" onclick="go('setup')" title="이 설정으로 다시 시작">
+            <span>2026-05-30</span><span class="badge badge-self">JSON</span>
+            <span class="meta">전체 4개 · 1,204건</span></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- C. 로딩 -->
+    <section data-screen="loading">
+      <div class="loading">
+        <div class="spin" role="status" aria-label="수집 중"></div>
+        <div class="stage">일정을 수집하고 있어요</div>
+        <div class="pbar"><i></i></div>
+        <div class="prog" aria-live="polite">캘린더 <b class="num">3</b>개 중 <b class="num">1</b>개 · <b class="num">1,240</b>건 수집됨</div>
+        <p class="muted" style="max-width:230px">수년치 공유 캘린더는 시간이 조금 걸릴 수 있어요. 패널을 닫지 마세요.</p>
+        <button class="btn btn-ghost" onclick="go('results')" style="font-size:12px;padding:7px 14px">데모: 완료로 ▸</button>
+      </div>
+    </section>
+
+    <!-- D. 설정 -->
+    <section data-screen="setup">
+      <div class="section">
+        <div class="eyebrow">캘린더 선택</div>
+        <p class="muted" style="margin-bottom:6px"><b style="color:var(--pine-deep)">공유 2개</b> 포함 · 가족 일정도 함께 내보냅니다</p>
+        <div class="cal-row"><input type="checkbox" checked><span class="dot" style="background:#3b82f6"></span><span class="nm">개인</span><span class="badge badge-self">나만</span><span class="ct num">90</span></div>
+        <div class="cal-row"><input type="checkbox" checked><span class="dot" style="background:#1F6B4F"></span><span class="nm">우리 가족</span><span class="badge badge-share">함께 4명</span><span class="ct num">40</span></div>
+        <div class="cal-row"><input type="checkbox" checked><span class="dot" style="background:#a855f7"></span><span class="nm">동호회</span><span class="badge badge-share">함께 12명</span><span class="ct num">12</span></div>
+      </div>
+      <div class="section">
+        <div class="eyebrow">기간</div>
+        <div class="toggle-row"><input type="checkbox" id="allrange" checked onchange="document.getElementById('dr').classList.toggle('dim',this.checked)"><label for="allrange">전체 기간 — 모든 일정</label></div>
+        <div class="daterow dim" id="dr"><input class="field" type="date" aria-label="시작일"><input class="field" type="date" aria-label="종료일"></div>
+      </div>
+      <button class="btn btn-primary btn-block" onclick="go('loading')">일정 수집·분석</button>
+      <p class="muted" style="text-align:center;margin-top:8px">선택한 캘린더의 전체 일정을 가져옵니다 · 시간이 걸릴 수 있어요</p>
+    </section>
+
+    <!-- E. 대시보드 -->
+    <section data-screen="results">
+      <div class="banner">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 9v4m0 4h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/></svg>
+        <span>캘린더 3개 중 1개에서 일부를 못 가져왔어요. 가져온 일정으로 계속할 수 있습니다. <a href="#" onclick="return false">자세히</a></span>
+      </div>
+
+      <div class="section ledger">
+        <div class="eyebrow">수집 요약 · 정직한 회계</div>
+        <div class="big"><span class="num">142</span><span class="u">건 내보내기</span></div>
+        <div class="tallybar"><i class="s-inc" style="width:71%"></i><i class="s-range" style="width:21%"></i><i class="s-fmt" style="width:5%"></i><i class="s-fail" style="width:3%"></i></div>
+        <div class="rule"></div>
+        <div class="tally">
+          <div class="ln inc"><span class="mk">▰</span><span class="lb">포함 — 내보낼 일정</span><span class="vl num">142</span></div>
+          <div class="ln"><span class="mk">░</span><span class="lb">기간 밖 — 의도된 제외</span><span class="vl num">42</span></div>
+          <div class="ln"><span class="mk">△</span><span class="lb">형식 미지원 — 못 옮김</span><span class="vl num">9</span></div>
+          <div class="ln"><span class="mk">✕</span><span class="lb">처리 실패 — 확인 필요</span><span class="vl num">6</span></div>
+        </div>
+        <p class="muted" style="margin-top:9px">하나도 조용히 사라지지 않았습니다. 못 옮긴 15건은 아래 “발견된 이슈”에서 확인하세요.</p>
+        <button class="btn btn-ghost btn-block" style="margin-top:11px;justify-content:space-between" onclick="go('detail')">
+          <span>전체 일정 보기</span><span class="num" style="color:var(--slate)">142건 ›</span></button>
+      </div>
+
+      <div class="section">
+        <div class="eyebrow">캘린더</div>
+        <div class="cal-row"><span class="dot" style="background:#3b82f6"></span><span class="nm">개인</span><span class="badge badge-self">나만</span><span class="ct num">90</span></div>
+        <div class="cal-row"><span class="dot" style="background:#1F6B4F"></span><span class="nm">우리 가족</span><span class="badge badge-share">함께 4명</span><span class="ct num">40</span></div>
+        <div class="cal-row"><span class="dot" style="background:#a855f7"></span><span class="nm">동호회</span><span class="badge badge-share">함께 12명</span><span class="ct num">12</span></div>
+      </div>
+
+      <div class="section">
+        <div class="eyebrow">카테고리</div>
+        <div class="chips"><span class="chip">가족 <span class="c num">30</span></span><span class="chip">약속 <span class="c num">22</span></span><span class="chip">기념일 <span class="c num">14</span></span><span class="chip">일 <span class="c num">9</span></span></div>
+      </div>
+
+      <div class="section">
+        <div class="eyebrow">발견된 이슈</div>
+        <details class="issue"><summary>참가자는 인원수만 담겨요<span class="num">8건</span><span class="chev">›</span></summary>
+          <div class="body">개인정보 보호를 위해 참가자 이름 대신 “참가자 N명”만 내보냅니다.<div class="ev">우리 가족 · 주말 모임 (참가자 4)</div></div></details>
+        <details class="issue"><summary>형식이 안 맞아 못 옮긴 일정<span class="num">9건</span><span class="chev">›</span></summary>
+          <div class="body">표준에 없는 반복 규칙이라 빠졌습니다.<div class="ev">동호회 · 매월 셋째 목요일 모임</div></div></details>
+      </div>
+
+      <div class="exportbar">
+        <div class="fmt">
+          <label><input type="radio" name="fmt" checked> ICS · 캘린더 가져오기</label>
+          <label><input type="radio" name="fmt"> JSON · 백업</label>
+        </div>
+        <button class="btn btn-primary btn-block" onclick="openModal()">142건 내보내기</button>
+        <p class="muted" style="text-align:center;display:flex;gap:5px;justify-content:center;align-items:center">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3l7 4v5c0 4-3 7-7 9-4-2-7-5-7-9V7z"/></svg>
+          이 파일은 이 기기에만 저장됩니다</p>
+      </div>
+    </section>
+
+    <!-- F. 상세 -->
+    <section data-screen="detail">
+      <div class="detail-tools">
+        <button class="iconbtn" onclick="go('results')" aria-label="요약으로">←</button>
+        <input class="field" type="search" name="q" placeholder="제목·캘린더 검색…" aria-label="일정 검색">
+      </div>
+      <p class="muted num" style="margin-bottom:8px" aria-live="polite">142건 중 142건</p>
+      <div>
+        <div class="ev-row"><div class="t">주간 회의</div><div class="d">2026-06-15 10:00 · <span class="b">개인</span> · 참가자 3 · 첨부 1</div></div>
+        <div class="ev-row"><div class="t">우리 가족 · 주말 모임</div><div class="d">2026-06-15 18:00 · <span class="b">우리 가족</span> · 함께 4명</div></div>
+        <div class="ev-row"><div class="t">엄마 생신</div><div class="d">2026-06-20 종일 · <span class="b">우리 가족</span> · 매년 반복</div></div>
+        <div class="ev-row"><div class="t">동호회 정기 모임</div><div class="d">2026-06-25 19:30 · <span class="b">동호회</span> · 참가자 9</div></div>
+        <div class="ev-row"><div class="t">치과 예약</div><div class="d">2026-06-27 14:00 · <span class="b">개인</span></div></div>
+      </div>
+    </section>
+
+    <!-- G. 완료 가이드 -->
+    <section data-screen="guide">
+      <div class="section">
+        <div class="eyebrow">내보내기 완료</div>
+        <p style="font-size:14px;font-weight:600"><span style="color:var(--pine-deep);word-break:break-all">timetree-export-2026-06-14.ics</span> 저장됨</p>
+        <p class="muted" style="margin-top:4px">이제 캘린더 앱에 가져오면 마이그레이션이 끝납니다.</p>
+      </div>
+      <div class="section">
+        <div class="guide-h"><span class="ic">G</span>Google 캘린더</div>
+        <ol class="steps">
+          <li>PC 웹에서 <a href="#" onclick="return false">설정 → 가져오기</a>를 엽니다.</li>
+          <li>“컴퓨터에서 파일 선택”으로 받은 <b>.ics</b>를 고릅니다.</li>
+          <li>가져올 캘린더를 고르고 “가져오기”.</li>
+        </ol>
+      </div>
+      <div class="section">
+        <div class="guide-h"><span class="ic"></span>Apple 캘린더</div>
+        <ol class="steps">
+          <li>Mac 캘린더에서 <b>파일 → 가져오기…</b></li>
+          <li>받은 <b>.ics</b>를 선택하고 캘린더를 고릅니다.</li>
+        </ol>
+        <div class="verify">✓ 잘 들어갔는지 확인 — 가져온 뒤 “엄마 생신”처럼 반복 일정 1건을 열어 날짜·시간이 맞는지 보세요. 중복이 생기면 가져온 캘린더를 통째로 지우고 다시 시도하면 됩니다.</div>
+      </div>
+      <div class="section" style="display:flex;gap:8px">
+        <button class="btn btn-ghost" style="flex:1" onclick="go('results')">대시보드로</button>
+        <button class="btn btn-ghost" style="flex:1" onclick="go('idle')">처음으로</button>
+      </div>
+    </section>
+
+    <!-- H. 오류 (로그인 만료) -->
+    <section data-screen="error">
+      <div class="section">
+        <div class="errbox" role="alert" aria-live="assertive">
+          <div class="ic">!</div>
+          <div class="ti">TimeTree 로그인이 풀렸어요</div>
+          <div class="ms">세션이 만료돼 일정을 더 가져올 수 없습니다. TimeTree 탭에서 다시 로그인한 뒤 이어서 시도하세요. <b>선택한 캘린더와 기간은 그대로 둡니다.</b></div>
+        </div>
+        <div style="display:flex;gap:8px;margin-top:14px">
+          <button class="btn btn-ghost" style="flex:1" onclick="go('idle')">TimeTree에서 로그인</button>
+          <button class="btn btn-primary" style="flex:1" onclick="go('loading')">이어서 시도</button>
+        </div>
+      </div>
+    </section>
+
+  </div><!-- /panel -->
+
+  <!-- 공유 경고 모달 -->
+  <div class="modal-wrap" id="modal">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="mt">
+      <div class="mh" id="mt">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--amber)" stroke-width="2"><path d="M12 9v4m0 4h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/></svg>
+        공유 캘린더가 포함돼요
+      </div>
+      <div class="mb">
+        <p>공유 캘린더에는 <b>다른 참가자의 이름·일정·메모</b> 같은 개인정보가 담길 수 있습니다. (참가자·첨부의 내용은 빼고 개수만 내보냅니다.)</p>
+        <p style="margin-top:8px">내보낸 파일은 이 기기에만 저장되며 외부로 전송되지 않습니다. <b>다른 사람의 정보를 내보낼 때 그 동의를 확인할 책임은 본인에게</b> 있습니다.</p>
+        <label class="consent"><input type="checkbox" id="cc" onchange="document.getElementById('okBtn').disabled=!this.checked">
+          <span>확인했고, 타인 정보 포함 시 동의를 확인할 책임이 내게 있음을 이해합니다.</span></label>
+      </div>
+      <div class="mf">
+        <button class="btn btn-ghost" onclick="closeModal()">취소</button>
+        <button class="btn btn-primary" id="okBtn" disabled onclick="closeModal();go('guide')">내보내기 확정</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const SCREENS=[['disconnected','비연결'],['idle','진입'],['loading','로딩'],['setup','설정'],['results','대시보드'],['detail','상세'],['guide','완료'],['error','오류']];
+const nav=document.getElementById('nav');
+SCREENS.forEach(([id,label])=>{const b=document.createElement('button');b.textContent=label;b.onclick=()=>go(id);b.dataset.t=id;nav.appendChild(b);});
+function go(id){
+  document.querySelectorAll('[data-screen]').forEach(s=>s.classList.toggle('on',s.dataset.screen===id));
+  document.querySelectorAll('#nav button').forEach(b=>b.setAttribute('aria-current',b.dataset.t===id));
+  document.getElementById('ctx').textContent = id==='disconnected'?'연결 안 됨':'연결됨';
+  document.getElementById('ctx').style.color = id==='disconnected'?'var(--slate-faint)':'var(--pine)';
+  document.getElementById('panel').scrollTop=0;
+}
+function openModal(){document.getElementById('cc').checked=false;document.getElementById('okBtn').disabled=true;document.getElementById('modal').classList.add('on');}
+function closeModal(){document.getElementById('modal').classList.remove('on');}
+function confirmClear(el){
+  if(el.dataset.armed){ el.closest('.recent').querySelectorAll('.recent-item').forEach(n=>n.remove()); el.textContent='지워짐'; return; }
+  el.dataset.armed='1'; el.textContent='정말 지울까요? 한 번 더 누르기'; el.style.color='var(--danger)';
+  setTimeout(()=>{if(el.dataset.armed){delete el.dataset.armed;el.textContent='기록 지우기';el.style.color='';}},3000);
+}
+document.getElementById('themeBtn').onclick=()=>{const h=document.documentElement;h.dataset.theme=h.dataset.theme==='dark'?'light':'dark';};
+go('idle');
+</script>
+</body>
+</html>
