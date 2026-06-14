@@ -17,6 +17,8 @@ export type RawTimeTreeCalendar = {
   id: number;
   aliasCode: string;
   name: string;
+  // 캘린더 용도. 'private'/'memo'=개인, 그 외('family' 등)=공유(#111). 비개인 메타.
+  purpose?: string | null;
   updatedAt?: number;
   createdAt?: number;
 };
@@ -71,6 +73,7 @@ export function validateRawTimeTreeCalendar(input: unknown): ValidationResult<Ra
   requireNumber(value, 'id', issues);
   requireString(value, 'aliasCode', issues);
   requireString(value, 'name', issues);
+  optionalString(value, 'purpose', issues, { allowNull: true });
   optionalNumber(value, 'updatedAt', issues);
   optionalNumber(value, 'createdAt', issues);
 

@@ -1,5 +1,6 @@
 import type { VNode } from 'preact';
 import type { RawTimeTreeCalendar } from '../../core/contracts.js';
+import { calendarBadge } from '../calendar-meta.js';
 
 export type CalendarListProps = {
   calendars: RawTimeTreeCalendar[];
@@ -21,6 +22,7 @@ export function CalendarList({ calendars, selected, onToggle }: CalendarListProp
     <div>
       {calendars.map((cal) => {
         const inputId = `cal-${cal.id}`;
+        const badge = calendarBadge(cal.purpose);
         return (
           <div class="calendar-item" key={cal.id}>
             <input
@@ -34,6 +36,7 @@ export function CalendarList({ calendars, selected, onToggle }: CalendarListProp
               }}
             />
             <label for={inputId}>{cal.name}</label>
+            <span class={badge.shared ? 'cal-badge cal-badge-share' : 'cal-badge cal-badge-self'}>{badge.label}</span>
           </div>
         );
       })}
