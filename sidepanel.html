@@ -14,7 +14,7 @@
       --bg: #fff; --fg: #111; --fg-h2: #444; --on-accent: #fff;
       --muted: #6b7280; --muted-2: #9ca3af; --muted-strong: #0f172a;
       --slate: #374151; --slate-2: #475569; --slate-3: #64748b; --slate-4: #94a3b8;
-      --accent: #2563eb; --accent-weak: #eff6ff; --accent-disabled: #93c5fd;
+      --accent: #2563eb; --accent-deep: #1d4ed8; --accent-weak: #eff6ff; --accent-disabled: #93c5fd;
       --context: #16a34a;
       --border: #d1d5db; --border-2: #e5e7eb; --border-3: #e2e8f0; --border-faint: #f3f4f6;
       --danger: #dc2626; --danger-weak: #fef2f2; --danger-border: #fca5a5;
@@ -26,7 +26,7 @@
         --bg: #141d19; --fg: #e8efea; --fg-h2: #c7d3cc; --on-accent: #fff;
         --muted: #9fb0a6; --muted-2: #7e8d84; --muted-strong: #eef3f0;
         --slate: #c4cfc8; --slate-2: #b0bdb5; --slate-3: #9aa9a0; --slate-4: #7e8d84;
-        --accent: #5b9cf6; --accent-weak: #16243a; --accent-disabled: #2c456b;
+        --accent: #5b9cf6; --accent-deep: #7db0f8; --accent-weak: #16243a; --accent-disabled: #2c456b;
         --context: #4ade80;
         --border: #2e3a34; --border-2: #27322c; --border-3: #243029; --border-faint: #1e2a24;
         --danger: #ec8888; --danger-weak: #2a1717; --danger-border: #50302f;
@@ -43,9 +43,12 @@
     button:focus-visible, input:focus-visible, a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
     .description { color: var(--muted); font-size: 12px; margin: -10px 0 14px; }
     .context-line { color: var(--context); font-size: 12px; margin-bottom: 12px; }
+    button, .recent-reuse, a { touch-action: manipulation; }
     .btn-primary { background: var(--accent); color: var(--on-accent); }
+    .btn-primary:hover { background: var(--accent-deep); }
     .btn-primary:disabled { background: var(--accent-disabled); cursor: not-allowed; }
     .btn-secondary { background: var(--border-faint); color: var(--fg); border: 1px solid var(--border); }
+    .btn-secondary:hover { border-color: var(--accent); color: var(--accent); }
     .section { margin-bottom: 16px; }
     label { display: block; margin-bottom: 6px; font-size: 13px; }
     input[type="date"] { padding: 6px 8px; border: 1px solid var(--border); border-radius: 4px; font-size: 13px; width: 100%; margin-top: 2px; }
@@ -71,6 +74,9 @@
     .empty-note { color: var(--muted); font-size: 12px; padding: 16px; text-align: center; }
     .recent-head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 8px; }
     .link-btn { background: none; border: none; color: var(--muted); font-size: 11px; padding: 0; text-decoration: underline; }
+    .link-btn:hover { color: var(--danger); }
+    .issue-toggle:hover { background: color-mix(in srgb, var(--warn-fg) 10%, transparent); }
+    .dash-cta:hover { border-color: var(--accent); }
     .recent-item { padding: 6px 0; border-bottom: 1px solid var(--border-faint); font-size: 12px; color: var(--slate); font-variant-numeric: tabular-nums; }
     .recent-item .meta { color: var(--muted-2); font-size: 11px; }
     .recent-reuse { cursor: pointer; border-radius: 6px; padding: 6px 8px; }
@@ -119,7 +125,7 @@
     .guide-done { font-size: 14px; font-weight: 600; color: var(--muted-strong); }
     .guide-done .file { color: var(--accent); word-break: break-all; }
     .guide-target { margin-top: 16px; }
-    .guide-target h3 { font-size: 13px; font-weight: 600; color: var(--muted-strong); margin-bottom: 8px; }
+    .guide-target h2 { font-size: 13px; font-weight: 600; color: var(--muted-strong); margin-bottom: 8px; }
     .guide-steps { list-style: none; counter-reset: step; padding: 0; }
     .guide-steps li { counter-increment: step; position: relative; padding: 0 0 10px 26px; font-size: 12px; color: var(--slate); line-height: 1.5; }
     .guide-steps li::before { content: counter(step); position: absolute; left: 0; top: -1px; width: 18px; height: 18px; border-radius: 50%; background: var(--accent-weak); color: var(--accent); font-size: 11px; font-weight: 600; display: flex; align-items: center; justify-content: center; }
@@ -152,10 +158,10 @@
 
     <div id="state-idle" class="entry">
       <div>
-        <div class="fidelity-hero" style="font-size:22px">캘린더 수집</div>
-        <p class="entry-lead">로그인된 TimeTree 캘린더와 공유 캘린더의 일정을 모아 ICS·JSON으로 내보냅니다.</p>
+        <div class="fidelity-hero" style="font-size:22px">갇힌 일정, 내 손으로 꺼내기</div>
+        <p class="entry-lead">로그인된 TimeTree의 개인·공유 일정을 이 기기 안에서 ICS·JSON으로 내보냅니다. 아무것도 전송하지 않습니다.</p>
       </div>
-      <button id="btn-load-calendars" class="btn-primary">캘린더 수집</button>
+      <button id="btn-load-calendars" class="btn-primary">캘린더 수집 시작</button>
       <div id="recent-section" class="entry-recent" hidden>
         <div class="recent-head">
           <p class="eyebrow" style="margin:0">최근 내보내기</p>
@@ -185,7 +191,7 @@
           <label style="margin-top:8px">종료일<input type="date" id="date-to" name="date-to" autocomplete="off" disabled></label>
         </div>
       </div>
-      <button id="btn-analyze" class="btn-primary">분석</button>
+      <button id="btn-analyze" class="btn-primary">일정 수집·분석</button>
     </div>
 
     <div id="state-results" hidden>
@@ -236,7 +242,7 @@
       </div>
       <div class="dash-section">
         <div class="guide-target">
-          <h3>Google Calendar</h3>
+          <h2>Google Calendar</h2>
           <ol class="guide-steps">
             <li>PC 웹에서 <a id="guide-gcal-link" href="https://calendar.google.com/calendar/u/0/r/settings/export" target="_blank" rel="noopener">Google 캘린더 설정 → 가져오기</a>를 엽니다.</li>
             <li>“컴퓨터에서 파일 선택”으로 방금 받은 <code>.ics</code> 파일을 고릅니다.</li>
@@ -245,7 +251,7 @@
           <p class="guide-note">모바일 앱에서는 가져오기가 안 됩니다 — PC 웹에서 진행하세요.</p>
         </div>
         <div class="guide-target">
-          <h3>Apple 캘린더</h3>
+          <h2>Apple 캘린더</h2>
           <ol class="guide-steps">
             <li>Mac 캘린더 앱에서 <strong>파일 → 가져오기…</strong>를 엽니다.</li>
             <li>받은 <code>.ics</code> 파일을 선택합니다.</li>
@@ -271,7 +277,7 @@
     <div id="state-detail" hidden>
       <div class="detail-toolbar">
         <button id="btn-detail-back" class="btn-secondary field" style="width:34px;padding:0" aria-label="요약으로 돌아가기">←</button>
-        <input type="search" id="event-search" class="field" style="flex:1;min-width:0" placeholder="제목·캘린더 검색…" autocomplete="off" aria-label="이벤트 검색">
+        <input type="search" id="event-search" name="event-search" class="field" style="flex:1;min-width:0" placeholder="제목·캘린더 검색…" autocomplete="off" aria-label="이벤트 검색">
       </div>
       <p class="detail-count-head" id="detail-count-head" aria-live="polite"></p>
       <div class="detail-scroll" id="detail-scroll"></div>
@@ -279,7 +285,7 @@
 
     <div id="state-error" class="section" hidden>
       <div class="error-box">
-        <p id="error-message"></p>
+        <p id="error-message" role="alert" aria-live="assertive"></p>
         <div style="display:flex; gap:8px; margin-top:8px">
           <button id="btn-relogin" class="btn-secondary" hidden>TimeTree에서 로그인</button>
           <button id="btn-retry" class="btn-secondary">다시 시도</button>
