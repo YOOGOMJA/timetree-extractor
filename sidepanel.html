@@ -240,7 +240,10 @@
     <div id="state-error" class="section" hidden>
       <div class="error-box">
         <p id="error-message"></p>
-        <button id="btn-retry" class="btn-secondary" style="margin-top:8px">다시 시도</button>
+        <div style="display:flex; gap:8px; margin-top:8px">
+          <button id="btn-relogin" class="btn-secondary" hidden>TimeTree에서 로그인</button>
+          <button id="btn-retry" class="btn-secondary">다시 시도</button>
+        </div>
       </div>
     </div>
 
