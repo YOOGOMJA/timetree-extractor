@@ -21,7 +21,7 @@ import { describeFetchFailure, classifyFetchIssues } from './fetch-failure-copy.
 import { computeVirtualWindow } from './virtual-window.js';
 import { aggregateByCalendar, aggregateByLabel, groupWarnings, aggregateContentSignals } from './dashboard-aggregate.js';
 import { formatEventMeta } from './event-meta.js';
-import { classifyNormalizeFailure, summarizeFidelity, type FidelityCounts, type FidelityKey } from './fidelity.js';
+import { classifyNormalizeFailure, summarizeFidelity, partialFailureMessage, type FidelityCounts, type FidelityKey } from './fidelity.js';
 import { labelChipColors } from './label-color.js';
 import type { ExportHistoryRecord } from './export-history.js';
 import { loadHistory, recordExport, clearHistory } from './export-history-store.js';
@@ -407,6 +407,9 @@ async function analyzeEvents(): Promise<void> {
 
   const allRaw: RawTimeTreeEvent[] = [];
   const labelMap = new Map<number, RawTimeTreeLabel[]>();
+  // 캘린더별 부분 실패를 수집해 성공분으로 계속한다(#112). 이벤트 fetch만 hard-fail이던
+  // 비대칭(라벨은 이미 soft-fallback)을 해소 — no-silent-loss 정신과 정합.
+  const failedCalendars: { calendarId: number; kind: ReturnType<typeof classifyFetchIssues> }[] = [];
   for (const calendarId of calendarIds) {
     try {
       const res = await sendToContentScript<FetchEventsResponse>({
@@ -415,14 +418,14 @@ async function analyzeEvents(): Promise<void> {
       });
       if (!res.ok) {
         console.warn(`이벤트 로드 실패 calendar ${calendarId}:`, res.issues.join(', '));
-        showError(describeFetchFailure(classifyFetchIssues(res.issues), res.issues).title);
-        return;
+        failedCalendars.push({ calendarId, kind: classifyFetchIssues(res.issues) });
+        continue;
       }
       allRaw.push(...res.events);
     } catch (err) {
-      console.warn('이벤트 로드 오류(transient):', errorMessage(err));
-      showError(describeFetchFailure('transient', [errorMessage(err)]).title);
-      return;
+      console.warn(`이벤트 로드 오류(transient) calendar ${calendarId}:`, errorMessage(err));
+      failedCalendars.push({ calendarId, kind: 'transient' });
+      continue;
     }
 
     // 라벨 fetch는 soft fallback: 실패해도 export를 막지 않고 해당 캘린더만 빈 라벨로 진행.
@@ -441,6 +444,13 @@ async function analyzeEvents(): Promise<void> {
       console.warn(`라벨 로드 오류 (calendar ${calendarId}); 빈 라벨로 진행`, errorMessage(err));
       labelMap.set(calendarId, []);
     }
+  }
+
+  // 전부 실패면 보여줄 게 없으니 오류 화면(가장 흔한 사유로 안내).
+  if (allRaw.length === 0 && failedCalendars.length > 0) {
+    const kind = failedCalendars.some((f) => f.kind === 'contract') ? 'contract' : 'transient';
+    showError(describeFetchFailure(kind).title);
+    return;
   }
 
   lastTotalFetched = allRaw.length;
@@ -474,6 +484,12 @@ async function analyzeEvents(): Promise<void> {
     const bMs = b.start.kind === 'date-time' ? b.start.epochMs : new Date(`${b.start.date}T00:00:00`).getTime();
     return aMs - bMs;
   });
+
+  // 부분 실패 배너(#112): 일부 캘린더만 실패했을 때 성공분과 함께 투명 표기.
+  const banner = document.getElementById('partial-banner')!;
+  const bannerMsg = partialFailureMessage(failedCalendars.length, calendarIds.length);
+  banner.textContent = bannerMsg;
+  banner.toggleAttribute('hidden', bannerMsg === '');
 
   lastNormalized = normalized;
   renderResults(normalized, {
