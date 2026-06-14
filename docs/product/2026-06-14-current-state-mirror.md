@@ -248,9 +248,31 @@ S4 실패: (C 중 실패) ──▶ H(error) ──"다시 시도"──▶ B
 
 ---
 
-## 7. 다음 단계
+## 7. 리뷰 결과 — 개선 포인트 (web-interface-guidelines, 2026-06-14)
 
-이 미러를 **적절한 스킬로 리뷰**해 공백·개선점을 도출한다:
-- 화면/UX: `web-design-guidelines`(인터페이스 가이드라인 점검), `frontend-design`(시각 정체성).
-- 제품: `identify-assumptions-existing`(가정 색출), PRD 정합.
-리뷰 결과는 이 문서 하단 또는 별도 이슈로 적재한다.
+실제 사이드바 UI(`sidepanel.html`/`.tsx`)를 Web Interface Guidelines로 점검. 기본기(focus-visible·tabular-nums·overscroll·가상화·i18n 날짜)는 양호. 개선 포인트:
+
+### P1 — 접근성·정확성 (작고 확실)
+| # | 위치 | 문제 | 가이드라인 |
+| --- | --- | --- | --- |
+| 1 | `sidepanel.html` `#error-message` | 비동기 오류 메시지에 `aria-live` 없음 → 스크린리더 미announce | Accessibility(async `aria-live="polite"`) |
+| 2 | `sidepanel.tsx` `btn-clear-history` | "기록 지우기"가 **확인 없이 즉시 삭제**(파괴적) | Navigation(destructive 확인) |
+| 3 | `sidepanel.html` `#event-search` | `name` 속성 누락 | Forms(meaningful `name`) |
+| 4 | `state-guide` | 제목 계층 점프(h1→h3, h2 없음) | Accessibility(hierarchical headings) |
+
+### P2 — UX·시각 (폴리시)
+| # | 위치 | 문제 | 가이드라인 |
+| --- | --- | --- | --- |
+| 5 | 모든 button/link | `:hover` 상태 전무 → 대비 증가 hover 없음 | Hover States |
+| 6 | `:6,:10` | 다크모드 없음(light 고정) → `prefers-color-scheme` 미존중 | Dark Mode |
+| 7 | 가이드 카피 `:208` | 직선/곡선 따옴표 혼용 | Typography(curly quotes) |
+| 8 | interactive 요소 | `touch-action: manipulation` 미설정 | Touch/Interaction |
+
+### 제품/UX 관찰 (가이드라인 외)
+- 진입 화면 히어로 텍스트와 버튼이 둘 다 "캘린더 수집"으로 중복 — 히어로는 가치 문구, 버튼은 액션으로 분리 여지.
+- "분석" 버튼: 무엇을 분석하는지 모호 → "일정 분석/검토" 등 구체화 여지(Copy: specific labels).
+
+## 8. 다음 단계
+- P1(이슈화) → 빠른 a11y/파괴적-동작 수정.
+- P2(이슈화) → hover·다크모드 등 폴리시.
+- 추적 이슈로 분해해 순차 처리.
