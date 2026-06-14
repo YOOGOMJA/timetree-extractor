@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { classifyNormalizeFailure, summarizeFidelity } from '../../src/extension/fidelity.js';
+import { classifyNormalizeFailure, summarizeFidelity, partialFailureMessage } from '../../src/extension/fidelity.js';
 
 test('classifyNormalizeFailure: recurrence 사유는 형식 미지원 (#114)', () => {
   assert.equal(classifyNormalizeFailure(['unsupported recurrence rule (event x): FREQ=SECONDLY']), 'unsupported');
@@ -24,4 +24,10 @@ test('summarizeFidelity: 합이 totalFetched면 accountedFor=true (no-silent-los
   assert.equal(ok.accountedFor, true);
   const leak = summarizeFidelity({ totalFetched: 200, exported: 142, rangeExcluded: 42, unsupported: 9, failed: 6, deactivated: 0 });
   assert.equal(leak.accountedFor, false);
+});
+
+test('partialFailureMessage: 실패 0이면 빈 문자열, 있으면 안내 (#112)', () => {
+  assert.equal(partialFailureMessage(0, 3), '');
+  assert.match(partialFailureMessage(1, 3), /3개 중 1개/);
+  assert.match(partialFailureMessage(2, 5), /가져온 일정으로 계속/);
 });

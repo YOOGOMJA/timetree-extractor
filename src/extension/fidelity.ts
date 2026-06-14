@@ -27,6 +27,12 @@ export function classifyNormalizeFailure(issues: string[]): 'unsupported' | 'fai
   return issues.some((issue) => /recurrence/i.test(issue)) ? 'unsupported' : 'failed';
 }
 
+// 캘린더별 부분 실패 안내(#112). 실패 0이면 빈 문자열(배너 숨김).
+export function partialFailureMessage(failedCount: number, totalCount: number): string {
+  if (failedCount <= 0) return '';
+  return `캘린더 ${totalCount}개 중 ${failedCount}개에서 일부를 못 가져왔어요. 가져온 일정으로 계속합니다.`;
+}
+
 const ORDER: FidelityKey[] = ['exported', 'rangeExcluded', 'unsupported', 'failed', 'deactivated'];
 
 // 0이 아닌 칸만 라벨과 함께. accountedFor = 모든 수집분이 빠짐없이 분류됐는지(no-silent-loss invariant).
