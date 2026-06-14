@@ -40,6 +40,7 @@ export function mapApiCalendarToRawCalendar(apiCalendar: Record<string, unknown>
     id: numberValue(apiCalendar.id),
     aliasCode: stringValue(apiCalendar.alias_code),
     name: stringValue(apiCalendar.name),
+    purpose: typeof apiCalendar.purpose === 'string' ? apiCalendar.purpose : null,
     updatedAt: optionalNumber(apiCalendar.updated_at),
     createdAt: optionalNumber(apiCalendar.created_at),
   };

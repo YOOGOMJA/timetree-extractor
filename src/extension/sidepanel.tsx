@@ -22,6 +22,7 @@ import { computeVirtualWindow } from './virtual-window.js';
 import { aggregateByCalendar, aggregateByLabel, groupWarnings, aggregateContentSignals } from './dashboard-aggregate.js';
 import { formatEventMeta } from './event-meta.js';
 import { classifyNormalizeFailure, summarizeFidelity, partialFailureMessage, type FidelityCounts, type FidelityKey } from './fidelity.js';
+import { countSharedCalendars } from './calendar-meta.js';
 import { labelChipColors } from './label-color.js';
 import type { ExportHistoryRecord } from './export-history.js';
 import { loadHistory, recordExport, clearHistory } from './export-history-store.js';
@@ -120,6 +121,13 @@ function renderCalendarList(calendars: RawTimeTreeCalendar[]): void {
   // 기존 동작 보존: 캘린더 로드 직후 전부 checked. 이후 토글은 selectedCalendarIds로 추적.
   selectedCalendarIds = new Set(calendars.map((c) => c.id));
   rerenderCalendarList();
+  // 공유 캘린더 1급화(#111): '공유 N개 포함' 요약. 핵심 가치(가족 일정)를 화면에 드러냄.
+  const sharedCount = countSharedCalendars(calendars);
+  const summary = document.getElementById('share-summary');
+  if (summary) {
+    summary.innerHTML = sharedCount > 0 ? `<b>공유 ${sharedCount}개</b> 포함 — 가족·그룹 일정도 함께 내보냅니다` : '';
+    summary.toggleAttribute('hidden', sharedCount === 0);
+  }
 }
 
 function getSelectedCalendarIds(): number[] {
