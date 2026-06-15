@@ -22,7 +22,7 @@ import { computeVirtualWindow } from './virtual-window.js';
 import { aggregateByCalendar, aggregateByLabel, groupWarnings, aggregateContentSignals } from './dashboard-aggregate.js';
 import { formatEventMeta } from './event-meta.js';
 import { classifyNormalizeFailure, summarizeFidelity, partialFailureMessage, type FidelityCounts, type FidelityKey } from './fidelity.js';
-import { countSharedCalendars } from './calendar-meta.js';
+import { countSharedCalendars, calendarBadge } from './calendar-meta.js';
 import { labelChipColors } from './label-color.js';
 import type { ExportHistoryRecord } from './export-history.js';
 import { loadHistory, recordExport, clearHistory } from './export-history-store.js';
@@ -213,17 +213,22 @@ function renderDashboardSections(events: NormalizedCalendarEvent[]): void {
   signalEl.toggleAttribute('hidden', signalParts.length === 0);
 
   const calendars = aggregateByCalendar(events);
+  const purposeByName = new Map(loadedCalendars.map((c) => [c.name, c.purpose]));
   const calSection = document.getElementById('cal-section')!;
   const calList = document.getElementById('cal-list')!;
   calSection.toggleAttribute('hidden', calendars.length === 0);
   render(
     <div>
-      {calendars.map((c) => (
-        <div class="cal-row" key={c.name}>
-          <span class="cal-name">{c.name}</span>
-          <span class="cal-count">{c.count}건</span>
-        </div>
-      ))}
+      {calendars.map((c) => {
+        const badge = calendarBadge(purposeByName.get(c.name));
+        return (
+          <div class="cal-row" key={c.name}>
+            <span class="cal-name">{c.name}</span>
+            <span class={badge.shared ? 'cal-badge cal-badge-share' : 'cal-badge cal-badge-self'}>{badge.label}</span>
+            <span class="cal-count">{c.count}건</span>
+          </div>
+        );
+      })}
     </div>,
     calList,
   );
@@ -410,6 +415,7 @@ function applyRangeToSetup(fromDate: string, toDate: string): void {
   if (all) all.checked = isFull;
   if (from) { from.disabled = isFull; if (!isFull) from.value = fromDate; }
   if (to) { to.disabled = isFull; if (!isFull) to.value = toDate; }
+  document.getElementById('range-fields')?.toggleAttribute('hidden', isFull);
 }
 
 // historySeq: idle 진입의 fire-and-forget refresh와 clear 후 refresh가 겹칠 때 오래된
@@ -456,6 +462,7 @@ async function loadCalendars(options: { silentFallback?: boolean } = {}): Promis
     if (rangeAll) rangeAll.checked = true;
     (document.getElementById('date-from') as HTMLInputElement).disabled = true;
     (document.getElementById('date-to') as HTMLInputElement).disabled = true;
+    document.getElementById('range-fields')?.setAttribute('hidden', '');
 
     showState('setup');
   } catch (err) {
@@ -753,6 +760,8 @@ document.addEventListener('DOMContentLoaded', () => {
     for (const id of ['date-from', 'date-to']) {
       (document.getElementById(id) as HTMLInputElement | null)?.toggleAttribute('disabled', on);
     }
+    // 전체기간이면 날짜 필드를 숨긴다(disclosure, 데모) — 좁은 패널에 빈 칸이 떠 혼란스럽지 않게.
+    document.getElementById('range-fields')?.toggleAttribute('hidden', on);
   });
 
   document.getElementById('btn-export')?.addEventListener('click', () => {
