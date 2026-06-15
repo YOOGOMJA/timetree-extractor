@@ -22,7 +22,7 @@ import { computeVirtualWindow } from './virtual-window.js';
 import { aggregateByCalendar, aggregateByLabel, groupWarnings, aggregateContentSignals } from './dashboard-aggregate.js';
 import { formatEventMeta } from './event-meta.js';
 import { classifyNormalizeFailure, summarizeFidelity, partialFailureMessage, type FidelityCounts, type FidelityKey } from './fidelity.js';
-import { countSharedCalendars, calendarBadge } from './calendar-meta.js';
+import { countSharedCalendars, calendarBadge, isSharedCalendar } from './calendar-meta.js';
 import { labelChipColors } from './label-color.js';
 import type { ExportHistoryRecord } from './export-history.js';
 import { loadHistory, recordExport, clearHistory } from './export-history-store.js';
@@ -312,11 +312,16 @@ function renderDetailWindow(): void {
   }
   const win = computeVirtualWindow(scroll.scrollTop, scroll.clientHeight, DETAIL_ROW_HEIGHT, detailFiltered.length);
   const slice = detailFiltered.slice(win.start, win.end);
+  // 공유 캘린더 이름 집합 — 상세행에 '공유' 배지 표기(데모).
+  const sharedNames = new Set(loadedCalendars.filter((c) => isSharedCalendar(c.purpose)).map((c) => c.name));
   render(
     <div style={`padding-top:${win.padTop}px;padding-bottom:${win.padBottom}px`}>
       {slice.map((event, i) => (
         <div class="event-item" style={`height:${DETAIL_ROW_HEIGHT}px`} key={win.start + i}>
-          <div class="title">{event.title}</div>
+          <div class="title">
+            {event.title}
+            {sharedNames.has(event.calendarName) ? <span class="cal-badge cal-badge-share" style="margin-left:6px">공유</span> : null}
+          </div>
           <div class="date">{formatEventDate(event)} · {event.calendarName}{formatEventMeta(event) ? ` · ${formatEventMeta(event)}` : ''}</div>
         </div>
       ))}
