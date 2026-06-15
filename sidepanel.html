@@ -172,15 +172,29 @@
     .verify-list { list-style: none; padding: 0; display: flex; flex-direction: column; gap: 7px; }
     .verify-list li { position: relative; padding-left: 20px; font-size: 12px; color: var(--slate); line-height: 1.5; }
     .verify-list li::before { content: "✓"; position: absolute; left: 0; top: 0; color: var(--context); font-weight: 700; }
+    /* 로컬 전용 안심 박스(데모 반영) */
+    .assure { display: flex; align-items: flex-start; gap: 7px; font-size: 11px; color: var(--slate); line-height: 1.55; background: var(--accent-weak); border-radius: 8px; padding: 9px 11px; margin-top: 4px; max-width: 280px; text-align: left; }
+    .assure svg { flex-shrink: 0; margin-top: 1px; color: var(--accent); }
+    .disconnect-mark { width: 46px; height: 46px; border-radius: 13px; background: var(--accent-weak); color: var(--accent); display: grid; place-items: center; margin: 0 auto 4px; }
     [hidden] { display: none !important; }
   </style>
 </head>
 <body>
   <h1>TimeTree Exporter</h1>
 
-  <div id="panel-not-timetree" hidden>
-    <p style="color:#6b7280; margin-bottom:12px">TimeTree 페이지에서 사용할 수 있습니다.<br>아래 버튼으로 이동하면 자동으로 연결됩니다.</p>
+  <div id="panel-not-timetree" class="entry" hidden>
+    <div class="disconnect-mark">
+      <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 9h18M8 3v4M16 3v4"/></svg>
+    </div>
+    <div>
+      <div class="fidelity-hero" style="font-size:20px">TimeTree에 연결되어<br>있지 않아요</div>
+      <p class="entry-lead">TimeTree 웹에 로그인한 탭에서 이 패널을 열면 자동으로 연결됩니다.</p>
+    </div>
     <button id="btn-open-timetree" class="btn-primary">TimeTree 열기</button>
+    <p class="assure">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 3l7 4v5c0 4-3 7-7 9-4-2-7-5-7-9V7z"/></svg>
+      <span>모든 처리는 이 기기 안에서. 일정 데이터를 외부로 전송하지 않습니다.</span>
+    </p>
   </div>
 
   <div id="panel-main" hidden>
@@ -189,9 +203,13 @@
     <div id="state-idle" class="entry">
       <div>
         <div class="fidelity-hero" style="font-size:22px">갇힌 일정, 내 손으로 꺼내기</div>
-        <p class="entry-lead">로그인된 TimeTree의 개인·공유 일정을 이 기기 안에서 ICS·JSON으로 내보냅니다. 아무것도 전송하지 않습니다.</p>
+        <p class="entry-lead">로그인된 TimeTree의 개인·공유 일정을 이 기기 안에서 ICS·JSON 파일로 내보냅니다.</p>
       </div>
       <button id="btn-load-calendars" class="btn-primary">캘린더 수집 시작</button>
+      <p class="assure">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 3l7 4v5c0 4-3 7-7 9-4-2-7-5-7-9V7z"/></svg>
+        <span>이 기기에서만 처리 · 아무것도 전송 안 함 · 로그인 정보 저장 안 함</span>
+      </p>
       <div id="recent-section" class="entry-recent" hidden>
         <div class="recent-head">
           <p class="eyebrow" style="margin:0">최근 내보내기</p>
