@@ -34,7 +34,7 @@
 ```
 - 숫자/카운트는 항상 `font-variant-numeric:tabular-nums` + display 폰트.
 - 타입 스케일: hero 25 / big-count 40 / h-14 / body-13 / sub-12 / eyebrow-10.5(uppercase, letter-spacing).
-- 실제 확장 적용 시 폰트는 **번들·subset**(원격 코드 금지) — 데모만 CDN.
+- **실제 확장 적용(확정)**: `Space Grotesk` 600 **latin subset(13KB)을 번들**(원격 코드 금지)해 브랜드·숫자에 적용. **Pretendard(한글 본문)는 system-ui 유지** — 본문 한글은 사용자 데이터(임의 음절)라 subset 불가하고 전체 번들은 621KB로 과대, system-ui(Apple SD Gothic Neo/맑은 고딕)가 고품질이라 비용 대비 이득 낮음(사용자 결정 2026-06-15).
 
 ## 컴포넌트 규약
 
