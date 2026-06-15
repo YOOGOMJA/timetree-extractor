@@ -8,6 +8,11 @@
   <meta name="theme-color" content="#141d19" media="(prefers-color-scheme: dark)">
   <title>TimeTree Exporter</title>
   <style>
+    /* 디스플레이 폰트(번들, 원격 코드 없음). 숫자·브랜드에만 — 한국어는 자동 system-ui fallback. */
+    @font-face {
+      font-family: 'Space Grotesk'; font-style: normal; font-weight: 600; font-display: swap;
+      src: url('fonts/space-grotesk-600.woff2') format('woff2');
+    }
     /* 디자인 토큰(#109). 라이트=기존 값과 동일(외관 불변). 다크는 prefers-color-scheme.
        --on-accent는 액센트 위 텍스트라 다크에서도 흰색 유지(반전 금지). */
     :root {
@@ -37,7 +42,7 @@
     html { color-scheme: light dark; }
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body { font-family: system-ui, sans-serif; font-size: 14px; color: var(--fg); background: var(--bg); padding: 16px; }
-    h1 { font-size: 16px; font-weight: 600; margin-bottom: 16px; }
+    h1 { font-size: 16px; font-weight: 600; margin-bottom: 16px; font-family: 'Space Grotesk', system-ui, sans-serif; letter-spacing: -.01em; }
     h2 { font-size: 13px; font-weight: 600; margin-bottom: 8px; color: var(--fg-h2); }
     button { cursor: pointer; padding: 8px 14px; border-radius: 6px; border: none; font-size: 13px; }
     button:focus-visible, input:focus-visible, a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
@@ -61,7 +66,7 @@
     .share-summary { font-size: 12px; color: var(--muted); margin-bottom: 8px; }
     .share-summary b { color: var(--accent); }
     .eyebrow { font-size: 11px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); margin-bottom: 6px; }
-    .fidelity-hero { font-size: 28px; font-weight: 600; font-variant-numeric: tabular-nums; line-height: 1.1; }
+    .fidelity-hero { font-size: 32px; font-weight: 700; font-variant-numeric: tabular-nums; line-height: 1.05; letter-spacing: -.02em; font-family: 'Space Grotesk', system-ui, sans-serif; }
     .fidelity-hero .unit { font-size: 14px; font-weight: 500; color: var(--muted); margin-left: 4px; }
     .fidelity-sub { font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; margin-top: 4px; }
     .fidelity-sub .dropped { color: var(--danger); font-weight: 600; }
@@ -328,9 +333,9 @@
   <dialog id="warning-modal">
     <div class="modal-header">공유 캘린더 경고</div>
     <div class="modal-body">
-      <p>이 도구는 공식 TimeTree export 기능이 아닙니다. 현재 로그인된 browser session에서 사용자가 접근 가능한 calendar data를 local file로 저장합니다.</p>
-      <p>Shared calendar에는 다른 참가자의 이름, 일정, memo, comment, image 등 personal information이 포함될 수 있습니다.</p>
-      <p>Export file은 사용자의 책임으로 보관해야 하며, 외부로 전송하지 않습니다. 다른 참가자의 정보를 내보내는 경우, 그 동의를 확인할 책임은 사용자에게 있습니다.</p>
+      <p>이 도구는 공식 TimeTree 내보내기가 아닙니다. 지금 로그인된 화면에서 접근 가능한 일정을 이 기기의 파일로 저장합니다.</p>
+      <p>공유 캘린더에는 다른 참가자의 이름·일정·메모 등 개인정보가 포함될 수 있습니다. (참가자·첨부의 내용은 빼고 개수만 내보냅니다.)</p>
+      <p>내보낸 파일은 이 기기에만 저장되며 외부로 전송되지 않습니다. 다른 사람의 정보를 내보내는 경우, 그 동의를 확인할 책임은 본인에게 있습니다.</p>
       <label class="modal-consent">
         <input type="checkbox" id="warning-consent">
         <span>위 내용을 확인했고, 타인 정보 포함 시 동의를 확인할 책임이 내게 있음을 이해하며, 책임지고 보관하겠습니다.</span>
