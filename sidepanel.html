@@ -14,8 +14,8 @@
       --bg: #fff; --fg: #111; --fg-h2: #444; --on-accent: #fff;
       --muted: #6b7280; --muted-2: #9ca3af; --muted-strong: #0f172a;
       --slate: #374151; --slate-2: #475569; --slate-3: #64748b; --slate-4: #94a3b8;
-      --accent: #2563eb; --accent-deep: #1d4ed8; --accent-weak: #eff6ff; --accent-disabled: #93c5fd;
-      --context: #16a34a;
+      --accent: #1F6B4F; --accent-deep: #16513B; --accent-weak: #E7F0EB; --accent-disabled: #A7C7B6;
+      --context: #1F6B4F;
       --border: #d1d5db; --border-2: #e5e7eb; --border-3: #e2e8f0; --border-faint: #f3f4f6;
       --danger: #dc2626; --danger-weak: #fef2f2; --danger-border: #fca5a5;
       --warn-bg: #fffbeb; --warn-border: #fde68a; --warn-fg: #92400e; --warn-fg-2: #b45309; --warn-fg-3: #78350f; --warn-consent: #fef3c7;
@@ -26,8 +26,8 @@
         --bg: #141d19; --fg: #e8efea; --fg-h2: #c7d3cc; --on-accent: #fff;
         --muted: #9fb0a6; --muted-2: #7e8d84; --muted-strong: #eef3f0;
         --slate: #c4cfc8; --slate-2: #b0bdb5; --slate-3: #9aa9a0; --slate-4: #7e8d84;
-        --accent: #5b9cf6; --accent-deep: #7db0f8; --accent-weak: #16243a; --accent-disabled: #2c456b;
-        --context: #4ade80;
+        --accent: #5FBF95; --accent-deep: #7FD0AC; --accent-weak: #163125; --accent-disabled: #2C4A3C;
+        --context: #5FBF95;
         --border: #2e3a34; --border-2: #27322c; --border-3: #243029; --border-faint: #1e2a24;
         --danger: #ec8888; --danger-weak: #2a1717; --danger-border: #50302f;
         --warn-bg: #241d10; --warn-border: #3a2e16; --warn-fg: #e3b370; --warn-fg-2: #d6a25a; --warn-fg-3: #c7964f; --warn-consent: #2a2113;
@@ -65,8 +65,19 @@
     .fidelity-hero .unit { font-size: 14px; font-weight: 500; color: var(--muted); margin-left: 4px; }
     .fidelity-sub { font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; margin-top: 4px; }
     .fidelity-sub .dropped { color: var(--danger); font-weight: 600; }
-    .fidelity-bar { height: 4px; border-radius: 2px; background: var(--fid-track); margin-top: 10px; overflow: hidden; }
-    .fidelity-bar > span { display: block; height: 100%; background: var(--accent); }
+    /* ledger 세그먼트 바(#111 F5): 빨강 트랙 폐기 → 중립 트랙 + 사유별 세그먼트(정직한 영수증). */
+    .fidelity-bar { display: flex; height: 6px; border-radius: 3px; background: var(--border-faint); margin-top: 10px; overflow: hidden; }
+    .fidelity-bar > i { display: block; height: 100%; }
+    .seg-exported { background: var(--accent); }
+    .seg-rangeExcluded { background: var(--slate-4); }
+    .seg-unsupported { background: var(--warn-fg-2); }
+    .seg-failed { background: var(--danger); }
+    .seg-deactivated { background: var(--muted-2); }
+    .ledger-tally { display: flex; flex-direction: column; gap: 6px; margin-top: 12px; }
+    .tally-ln { display: flex; align-items: center; gap: 8px; font-size: 11.5px; }
+    .tally-ln .mk { width: 10px; height: 10px; border-radius: 2px; flex-shrink: 0; }
+    .tally-ln .lb { color: var(--slate); }
+    .tally-ln .vl { margin-left: auto; color: var(--fg); font-variant-numeric: tabular-nums; }
     .warning-item { padding: 8px 10px; background: var(--warn-bg); border: 1px solid var(--warn-border); border-radius: 6px; margin-bottom: 6px; }
     .warning-item .w-label { font-size: 12px; font-weight: 600; color: var(--warn-fg); display: flex; justify-content: space-between; gap: 8px; }
     .warning-item .w-label .count { font-variant-numeric: tabular-nums; }
@@ -134,7 +145,7 @@
     /* 제외 안심 + 전송 안 함 신뢰 #78 */
     .fidelity-note { font-size: 11px; color: var(--slate-3); margin-top: 6px; line-height: 1.5; }
     .trust-line { display: flex; align-items: flex-start; gap: 6px; font-size: 11px; color: var(--slate-2); margin: 10px 0; line-height: 1.5; }
-    .trust-line svg { flex-shrink: 0; margin-top: 1px; }
+    .trust-line svg { flex-shrink: 0; margin-top: 1px; color: var(--context); }
     /* 가져오기 가이드 #78 */
     .guide-done { font-size: 14px; font-weight: 600; color: var(--muted-strong); }
     .guide-done .file { color: var(--accent); word-break: break-all; }
@@ -215,11 +226,11 @@
 
     <div id="state-results" hidden>
       <p id="partial-banner" class="partial-banner" role="status" aria-live="polite" hidden></p>
-      <div class="dash-section">
-        <p class="eyebrow">수집 요약</p>
+      <div class="dash-section ledger">
+        <p class="eyebrow">수집 요약 · 정직한 회계</p>
         <div class="fidelity-hero"><span id="fid-export">0</span><span class="unit">건 내보내기</span></div>
-        <p class="fidelity-sub" id="fid-sub" aria-live="polite"></p>
-        <div class="fidelity-bar"><span id="fid-bar"></span></div>
+        <div class="fidelity-bar" id="fid-bar" aria-hidden="true"></div>
+        <div class="ledger-tally" id="fid-tally" aria-live="polite"></div>
         <p class="fidelity-note" id="fid-note" hidden></p>
         <p class="fidelity-sub" id="content-signals" hidden></p>
       </div>
@@ -245,7 +256,7 @@
           <label><input type="radio" name="format" value="json"> JSON</label>
         </div>
         <p class="trust-line">
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="2" aria-hidden="true"><path d="M12 2l8 4v6c0 5-3.5 8-8 10-4.5-2-8-5-8-10V6z"/></svg>
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 2l8 4v6c0 5-3.5 8-8 10-4.5-2-8-5-8-10V6z"/></svg>
           <span>내보낸 파일은 이 기기에만 저장되며, 어디에도 전송되지 않습니다.</span>
         </p>
         <button id="btn-export" class="btn-primary">내보내기</button>

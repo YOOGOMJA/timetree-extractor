@@ -146,20 +146,36 @@ function renderResults(
   const { segments, accountedFor } = summarizeFidelity(counts);
   if (!accountedFor) console.warn('fidelity: 합계 불일치(silent-loss 가능)', counts);
   document.getElementById('fid-export')!.textContent = String(exported);
-  const subEl = document.getElementById('fid-sub')!;
-  subEl.textContent = '';
-  subEl.append(`전체 ${totalFetched}건`);
+
+  // ledger 시각화(#111 F5): 빨강 단색 바 → 중립 트랙 + 사유별 세그먼트 + 4줄 회계.
+  const longLabel: Record<FidelityKey, string> = {
+    exported: '포함 — 내보낼 일정', rangeExcluded: '기간 밖 — 의도된 제외',
+    unsupported: '형식 미지원 — 못 옮김', failed: '처리 실패 — 확인 필요', deactivated: '삭제된 일정 — 제외',
+  };
+  const bar = document.getElementById('fid-bar')!;
+  const tally = document.getElementById('fid-tally')!;
+  bar.textContent = '';
+  tally.textContent = '';
   for (const seg of segments) {
-    if (seg.key === 'exported') continue;
-    const span = document.createElement('span');
-    // 형식·처리 실패는 손실이므로 강조(danger), 기간밖/삭제는 중립.
-    if (seg.key === 'unsupported' || seg.key === 'failed') span.className = 'dropped';
-    const shortLabel: Record<FidelityKey, string> = { exported: '포함', rangeExcluded: '기간 밖', unsupported: '형식', failed: '실패', deactivated: '삭제' };
-    span.textContent = `${shortLabel[seg.key]} ${seg.count}건`;
-    subEl.append(' · ', span);
+    const pct = totalFetched > 0 ? (seg.count / totalFetched) * 100 : 0;
+    const i = document.createElement('i');
+    i.className = `seg-${seg.key}`;
+    i.style.width = `${pct}%`;
+    bar.append(i);
+
+    const ln = document.createElement('div');
+    ln.className = 'tally-ln';
+    const mk = document.createElement('span');
+    mk.className = `mk seg-${seg.key}`;
+    const lb = document.createElement('span');
+    lb.className = 'lb';
+    lb.textContent = longLabel[seg.key];
+    const vl = document.createElement('span');
+    vl.className = 'vl';
+    vl.textContent = String(seg.count);
+    ln.append(mk, lb, vl);
+    tally.append(ln);
   }
-  const ratio = totalFetched > 0 ? Math.round((exported / totalFetched) * 100) : 100;
-  (document.getElementById('fid-bar') as HTMLElement).style.width = `${ratio}%`;
 
   // 못 옮긴(형식·처리 실패) 건이 있으면 행동가능 안심 카피(#78·#114).
   const lost = counts.unsupported + counts.failed;
